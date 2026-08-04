@@ -17,6 +17,7 @@ if [ -z "$NODE_PATH" ]; then
   echo "error: node not found on PATH" >&2
   exit 1
 fi
+APP_VERSION="$("$NODE_PATH" -p 'require(process.argv[1]).version' "$PACKAGE_DIR/package.json")"
 
 if [ ! -f "$DAEMON_SCRIPT" ]; then
   echo "error: daemon not built. Run: pnpm build:workbench-runtime" >&2
@@ -63,8 +64,8 @@ cat > "$CONTENTS/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>dev.nerve.workbench</string>
   <key>CFBundleIconFile</key><string>$APP_NAME</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.17.0</string>
-  <key>CFBundleVersion</key><string>0.17.0</string>
+  <key>CFBundleShortVersionString</key><string>$APP_VERSION</string>
+  <key>CFBundleVersion</key><string>$APP_VERSION</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
