@@ -5,7 +5,10 @@ import {
   providerOAuthSecretName,
 } from "../../domains/auth/index.js";
 import { listAvailableSkills } from "../../domains/agents/prompting/resource-loader.js";
-import { directoryListing } from "../../domains/filesystem/filesystem.service.js";
+import {
+  directoryListing,
+  projectDirectoryEntries,
+} from "../../domains/filesystem/filesystem.service.js";
 import { writeSettings } from "../../infrastructure/storage/index.js";
 import {
   getConversationSnapshotResponse,
@@ -58,9 +61,12 @@ export const platformMethodHandlers = defineWorkbenchMethodHandlers({
     });
   },
   "auth.providers.list": async (state) => ({
-    providers: await state.auth.listProviderMetadata(
-      state.providerCatalog.providerDisplayNames(),
-    ),
+    providers: [
+      ...(await state.auth.listProviderMetadata(
+        state.providerCatalog.providerDisplayNames(),
+      )),
+      ...state.registry.listAcpProviders(),
+    ],
   }),
   "providerCatalog.get": async (state) => {
     await state.providerCatalog.ensureLoaded();
@@ -125,6 +131,11 @@ export const platformMethodHandlers = defineWorkbenchMethodHandlers({
   }),
   "filesystem.directories.list": (_state, params) =>
     directoryListing(params?.path, params?.showHidden as boolean | undefined),
+  "filesystem.project.entries.list": (state, params) =>
+    projectDirectoryEntries(
+      params,
+      (projectId) => state.registry.getProject(projectId).dir,
+    ),
   "applicationLog.prune": (state, params) => state.logger.prune(params),
 });
 

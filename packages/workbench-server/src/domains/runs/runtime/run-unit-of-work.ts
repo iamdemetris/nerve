@@ -51,7 +51,10 @@ export interface RunUnitOfWorkPort {
     }[]
   >;
   markEventDelivered(delivery: RunEventDeliveryRecord): Promise<void>;
-  materialize(state: RunHydratedState): Promise<void>;
+  materialize(
+    state: RunHydratedState,
+    transition: RunTransitionRecord,
+  ): Promise<void>;
 }
 
 export interface RunTransitionObserverPort {
@@ -95,7 +98,8 @@ interface PendingRunEventIntent {
 }
 
 export class RunEventDeliveryService {
-  private tail: Promise<void> = Promise.resolve();
+  private readonly tails = new Map<string, Promise<void>>();
+  private recoveryTail: Promise<void> = Promise.resolve();
   private recoveryRequired = false;
 
   constructor(
@@ -108,13 +112,16 @@ export class RunEventDeliveryService {
    * Waits for every queued delivery to settle without initiating new work.
    * Used by host shutdown to reach write quiescence deterministically.
    */
-  settled(): Promise<void> {
-    return this.tail;
+  async settled(): Promise<void> {
+    while (this.tails.size > 0) {
+      await Promise.allSettled(this.tails.values());
+    }
+    await this.recoveryTail;
   }
 
   /** Performs the all-run recovery sweep. */
   flush(): Promise<void> {
-    return this.serialized(async () => {
+    return this.serializedRecovery(async () => {
       try {
         await this.flushPending();
         this.recoveryRequired = false;
@@ -127,11 +134,10 @@ export class RunEventDeliveryService {
 
   /** Delivers only one committed transition on the healthy hot path. */
   flushTransition(transition: RunTransitionRecord): Promise<void> {
-    return this.serialized(async () => {
+    return this.serializedRun(transition.runId, async () => {
       try {
         if (this.recoveryRequired) {
-          await this.flushPending();
-          this.recoveryRequired = false;
+          await this.recoverPending();
           return;
         }
         const state = await this.unitOfWork.load(transition.runId);
@@ -191,9 +197,39 @@ export class RunEventDeliveryService {
     });
   }
 
-  private serialized(action: () => Promise<void>): Promise<void> {
-    const result = this.tail.catch(() => undefined).then(action);
-    this.tail = result.then(
+  private recoverPending(): Promise<void> {
+    return this.serializedRecovery(async () => {
+      if (!this.recoveryRequired) return;
+      try {
+        await this.flushPending();
+        this.recoveryRequired = false;
+      } catch (error) {
+        this.recoveryRequired = true;
+        throw error;
+      }
+    });
+  }
+
+  private serializedRun(
+    runId: string,
+    action: () => Promise<void>,
+  ): Promise<void> {
+    const previous = this.tails.get(runId) ?? Promise.resolve();
+    const result = previous.catch(() => undefined).then(action);
+    const tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.tails.set(runId, tail);
+    void tail.finally(() => {
+      if (this.tails.get(runId) === tail) this.tails.delete(runId);
+    });
+    return result;
+  }
+
+  private serializedRecovery(action: () => Promise<void>): Promise<void> {
+    const result = this.recoveryTail.catch(() => undefined).then(action);
+    this.recoveryTail = result.then(
       () => undefined,
       () => undefined,
     );

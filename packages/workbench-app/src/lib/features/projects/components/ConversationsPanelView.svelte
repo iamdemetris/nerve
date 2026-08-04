@@ -4,24 +4,27 @@ import { projectNavigatorSignals } from "$lib/features/projects/state/project-na
 import { conversationSelectors } from "$lib/features/conversations/state/conversation-selectors.svelte";
 import { selection } from "$lib/features/workspace/state/selection.svelte";
 import { workspaceSelectors } from "$lib/features/workspace/state/workspace-selectors.svelte";
+import { workspaceState } from "$lib/features/workspace/state/workspace-state.svelte";
 import { openConversation } from "$lib/features/conversations/state/tabs";
+import { selectPendingConversation } from "$lib/features/conversations/state/pending";
 import {
   deleteConversationAndRefresh,
   deleteProjectAndRefresh,
   newConversationInProject,
   openProjectInEditorAndNotify,
   pruneProjectConversationsAndRefresh,
+  selectProject,
 } from "$lib/features/workspace/state/workspace-actions.svelte";
 
 const status = $derived(workspaceSelectors.status);
-const projectIds = $derived(new Set(workspaceSelectors.selectedProjectIds));
-const projects = $derived(
-  workspaceSelectors.projects.filter((project) => projectIds.has(project.id)),
-);
-const conversations = $derived(workspaceSelectors.selectedProjectConversations);
+const projects = $derived(workspaceSelectors.projects);
+const conversations = $derived(workspaceSelectors.conversations);
 const agents = $derived(workspaceSelectors.agents);
 const openConversationTabIds = $derived(
   workspaceSelectors.openConversationTabIds,
+);
+const pendingConversationTabs = $derived(
+  workspaceSelectors.openPendingConversationTabs,
 );
 const conversationActivityById = $derived(
   conversationSelectors.conversationActivityById,
@@ -36,10 +39,14 @@ const conversationActivityById = $derived(
   selectedProjectId={selection.projectId}
   selectedConversationId={selection.conversationId}
   {openConversationTabIds}
+  {pendingConversationTabs}
   {conversationActivityById}
   searchFocusToken={projectNavigatorSignals.searchFocusToken}
   editorAvailability={status?.runtime.editors}
+  onSelectProject={(projectId) => void selectProject(projectId)}
+  onOpenProjectPicker={() => (workspaceState.projectPickerOpen = true)}
   onOpenConversation={openConversation}
+  onOpenPendingConversation={selectPendingConversation}
   onNewConversationInProject={newConversationInProject}
   onOpenProjectInEditor={(projectId, editor) =>
     void openProjectInEditorAndNotify(projectId, editor)}

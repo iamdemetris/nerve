@@ -19,13 +19,13 @@ Type `/` to filter available inline commands. Type `@` to search files and direc
 
 `@` is project path completion—not a mention system for people, agents, or conversations.
 
-## Drop files and folders
+## Drop files, folders, and images
 
-In the desktop app, drag one or more files or folders onto the composer. The drop target inserts their paths at the current selection. Items inside the active project use project-relative paths, the project root becomes `.`, and items outside the project keep absolute paths. Multiple paths preserve their order, and paths containing whitespace are quoted.
+**Images (vision-capable models):** drag image files onto the composer. Nerve uploads them to a temporary local path (same as clipboard paste) and inserts those paths. Available in desktop and browser when the selected model’s catalog includes image input. Text-only models do not accept image drops.
 
-Dropped paths remain editable and are sent only when you submit the prompt. Nerve does not copy or upload the items, create thumbnails, or store durable attachments; it mentions their existing filesystem locations so the agent can work with them under its normal tool and permission limits.
+**Other files and folders (desktop):** drag non-image items onto the composer to insert path mentions at the current selection. Items inside the active project use project-relative paths, the project root becomes `.`, and items outside the project keep absolute paths. Multiple paths preserve their order, and paths containing whitespace are quoted. Path mentions require Electron’s native path bridge and are not available in a normal browser or installed PWA—use `@` completion there for project paths.
 
-This workflow requires Electron's native path bridge and is not available in a normal browser or installed PWA. Use `@` completion there to reference paths inside the current project.
+Dropped path mentions remain editable and are sent only when you submit the prompt. Path drops do not copy or upload items; image drops create temporary paths for the vision pipeline only, not durable project attachments.
 
 ## Suggestions
 
@@ -40,7 +40,7 @@ The toolbar displays current context-window pressure and cumulative usage when t
 A pending approval, question, or plan review disables normal composition. Resolve the card in the transcript. This keeps the decision associated with the exact tool or plan that requested it.
 
 :::note
-Dropped items are path mentions, not uploads or attachments. Clipboard image paste is separate: it creates temporary local image paths for image-capable models.
+Non-image drops are path mentions, not uploads. Image paste and image drop (vision models only) create temporary local paths for the model’s image pipeline.
 :::
 
 ## Next steps

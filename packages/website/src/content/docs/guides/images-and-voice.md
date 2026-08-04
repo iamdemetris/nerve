@@ -1,21 +1,22 @@
 ---
 title: Add images and voice
-description: Paste clipboard images and transcribe voice into a prompt.
+description: Paste or drop images and transcribe voice into a prompt.
 sidebar:
   order: 3
 ---
 
-## Paste an image
+## Paste or drop an image
 
-Copy an image and paste with `Ctrl/Cmd+V` inside the composer. Nerve intercepts clipboard files with an `image/*` MIME type, stores each image under the operating system temp directory in `nerve/`, and inserts newline-separated local paths at the cursor.
+When the **selected model accepts image input** (its catalog `input` includes `image`), you can add images from the composer in two ways:
 
-Accepted MIME families include PNG, JPEG, GIF, WebP, SVG, BMP, TIFF, and AVIF. The path lets the agent's file-reading pipeline send image content to a capable model.
+1. **Paste** — copy an image and press `Ctrl/Cmd+V` in the composer.
+2. **Drop** — drag one or more image files onto the composer text area.
 
-:::caution
-The composer does not currently prevent image paste when a text-only model is selected. Choose a model known to support image input. Pasted files are temporary paths, not durable project attachments, and the UI does not promise a file-size or decoded-signature validation boundary.
-:::
+Nerve intercepts `image/*` files, stores each under the OS temp directory in `nerve/`, and inserts the resulting local paths at the cursor. Accepted MIME families include PNG, JPEG, GIF, WebP, SVG, BMP, TIFF, and AVIF. The path lets the agent's file-reading pipeline send image content to the model.
 
-Dropping an image, another file, or a folder onto the desktop composer is different from clipboard image paste: it inserts the item's existing filesystem path without copying, uploading, or creating a durable attachment. See [Use the composer](/guides/composer/#drop-files-and-folders) for the full workflow. In a browser or installed PWA, use `@` completion to reference paths inside the project.
+Image paste and image drop are **disabled for text-only models**. Switch to a vision-capable model to enable them. Temporary paths are not durable project attachments, and the UI does not promise a file-size or decoded-signature validation boundary.
+
+Dropping **non-image** files or folders on desktop still inserts path mentions only (no copy/upload). See [Use the composer](/guides/composer/#drop-files-and-folders). Mixed drops attach supported images and resolve other items as path mentions when the desktop path bridge is available.
 
 ## Record voice
 

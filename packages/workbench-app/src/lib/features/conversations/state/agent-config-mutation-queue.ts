@@ -7,6 +7,7 @@ import type { AgentRecord, ModelSelection } from "$lib/api";
 export interface AgentConfigPatch {
   model?: ModelSelection | null;
   thinkingLevel?: AgentRecord["thinkingLevel"];
+  serviceTier?: AgentRecord["serviceTier"];
   mode?: AgentRecord["mode"];
   permissionLevel?: AgentRecord["permissionLevel"];
   approvalPolicy?: AgentRecord["approvalPolicy"];
@@ -37,6 +38,7 @@ interface AgentQueueEntry {
 const PATCH_FIELDS = [
   "model",
   "thinkingLevel",
+  "serviceTier",
   "mode",
   "permissionLevel",
   "approvalPolicy",
@@ -154,6 +156,9 @@ function runtimeConfigFields(
   if (patch.model !== undefined) runtime.model = patch.model;
   if (patch.thinkingLevel !== undefined) {
     runtime.thinkingLevel = patch.thinkingLevel;
+  }
+  if (patch.serviceTier !== undefined) {
+    runtime.serviceTier = patch.serviceTier;
   }
   if (patch.permissionLevel !== undefined) {
     runtime.permissionLevel = patch.permissionLevel;

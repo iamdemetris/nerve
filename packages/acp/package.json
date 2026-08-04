@@ -1,0 +1,33 @@
+{
+  "name": "@nervekit/acp",
+  "version": "0.17.0",
+  "private": true,
+  "description": "Agent Client Protocol client for driving external coding agent CLIs such as Cursor and OpenCode.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "files": [
+    "dist/**",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "check": "tsc -b --pretty false",
+    "test": "tsx --test \"test/**/*.test.ts\"",
+    "try": "tsx scripts/try-agent.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "tsx": "4.22.4",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

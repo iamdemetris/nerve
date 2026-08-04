@@ -43,6 +43,8 @@ type Props = {
   focusToken?: number;
   slashCompletions?: CompletionItem[];
   fileCompletions?: (query: string) => Promise<CompletionItem[]>;
+  /** Overlay copy while dragging files over the editor. */
+  dropOverlayLabel?: string;
   onChange?: (value: string) => void;
   onSubmit?: () => void;
   onPasteImage?: (file: File) => Promise<string>;
@@ -67,6 +69,7 @@ let {
   focusToken = 0,
   slashCompletions = [],
   fileCompletions,
+  dropOverlayLabel = "Drop files or folders to add their paths",
   onChange,
   onSubmit,
   onPasteImage,
@@ -790,11 +793,11 @@ onDestroy(() => view?.destroy());
   <div bind:this={host}></div>
   {#if fileDragActive}
     <div
-      class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-md border border-primary bg-background/95 px-4 text-sm font-medium text-foreground shadow-sm"
+      class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-md border border-primary bg-background/95 px-4 text-center text-sm font-medium text-foreground shadow-sm"
       aria-hidden="true"
     >
-      <FileIcon class="size-4 text-primary" />
-      <span>Drop files or folders to add their paths</span>
+      <FileIcon class="size-4 shrink-0 text-primary" />
+      <span>{dropOverlayLabel}</span>
     </div>
   {/if}
 </div>

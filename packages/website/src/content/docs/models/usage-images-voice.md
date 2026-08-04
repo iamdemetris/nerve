@@ -17,9 +17,9 @@ Nerve currently retrieves subscription usage snapshots only for OAuth Anthropic 
 
 ## Image input
 
-Custom model definitions can declare image input and the harness can pass image content. The public model picker does not currently expose modality and the composer enables clipboard image paste for every selected model. Select a model known to accept images; a text-only model can reject the request.
+Model catalog entries declare accepted modalities via `input` (for example `["text", "image"]`). When the selected model includes `image`, the composer enables **clipboard paste** and **drag-and-drop** of image files. Both store a temporary local path under the OS temp directory and insert it into the draft. Text-only models keep image paste/drop disabled so a non-vision model is not sent unsupported media.
 
-See [Images and voice](/guides/images-and-voice/) for clipboard behavior. Pasted images become temporary local paths rather than durable attachments.
+See [Images and voice](/guides/images-and-voice/) for details. Temporary image paths are not durable project attachments.
 
 ## Voice input
 

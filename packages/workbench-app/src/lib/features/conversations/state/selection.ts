@@ -64,6 +64,8 @@ export async function applyActiveConversationSelection(
   }
   conversationState.selectedThinkingLevel =
     override?.thinkingLevel ?? conversationAgent?.thinkingLevel ?? "off";
+  conversationState.selectedServiceTier =
+    override?.serviceTier ?? conversationAgent?.serviceTier ?? "default";
   conversationState.selectedMode =
     override?.mode ?? conversationAgent?.mode ?? conversation.mode;
   conversationState.selectedPermissionLevel =

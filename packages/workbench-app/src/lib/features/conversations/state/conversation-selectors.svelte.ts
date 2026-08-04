@@ -114,6 +114,9 @@ export const conversationSelectors = {
   get selectedThinkingLevel() {
     return conversationState.selectedThinkingLevel;
   },
+  get selectedServiceTier() {
+    return conversationState.selectedServiceTier;
+  },
   get selectedMode() {
     return conversationState.selectedMode;
   },

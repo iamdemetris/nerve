@@ -121,6 +121,50 @@ test("targeted delivery avoids the all-run pending scan", async () => {
   );
 });
 
+test("healthy event delivery runs independently for concurrent chats", async () => {
+  const unitOfWork = new DeliveryUnitOfWork();
+  let active = 0;
+  let peak = 0;
+  let started = 0;
+  let resolveStarted!: () => void;
+  const bothStarted = new Promise<void>((resolve) => {
+    resolveStarted = resolve;
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const service = new RunEventDeliveryService(
+    unitOfWork,
+    {
+      publish: async (event) => {
+        active += 1;
+        peak = Math.max(peak, active);
+        started += 1;
+        if (started === 2) resolveStarted();
+        await gate;
+        active -= 1;
+        return { eventId: `event_${event.id}`, sequence: started };
+      },
+    },
+    () => "2026-07-12T00:00:20.000Z",
+  );
+
+  const first = service.flushTransition({
+    ...transition(1, [intent("intent_first_chat", 1)]),
+    runId: "run_first_chat",
+  });
+  const second = service.flushTransition({
+    ...transition(1, [intent("intent_second_chat", 2)]),
+    runId: "run_second_chat",
+  });
+  await bothStarted;
+  assert.equal(peak, 2);
+
+  release();
+  await Promise.all([first, second]);
+});
+
 test("a targeted failure forces a serialized full sweep before later targets", async () => {
   const unitOfWork = new DeliveryUnitOfWork();
   const first = intent("intent_first", 1);

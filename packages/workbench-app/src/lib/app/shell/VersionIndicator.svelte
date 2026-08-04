@@ -1,16 +1,10 @@
 <script lang="ts">
 import type { LatestRelease } from "@nervekit/contracts";
-import Check from "@lucide/svelte/icons/check";
-import Copy from "@lucide/svelte/icons/copy";
-import { Button } from "@nervekit/ui-kit/components/ui/button";
 import Popover, {
   PopoverBody,
   PopoverHeader,
   PopoverSection,
 } from "@nervekit/ui-kit/components/ui/popover-panel";
-import { onDestroy } from "svelte";
-import { scale } from "svelte/transition";
-import { writeClipboardText } from "$lib/core/clipboard";
 import { displayVersion, isVersionOutdated } from "$lib/features/releases";
 
 type Props = {
@@ -29,38 +23,11 @@ const outdated = $derived(
 );
 const accessibleLabel = $derived(
   outdated && latestLabel
-    ? `Nerve ${currentLabel}; update available: ${latestLabel}`
+    ? `Custom Nerve build ${currentLabel}; upstream release available: ${latestLabel}`
     : latestLabel
-      ? `Nerve ${currentLabel}; no newer stable release detected`
-      : `Nerve ${currentLabel}; latest release check unavailable`,
+      ? `Custom Nerve build ${currentLabel}; no newer upstream release detected`
+      : `Custom Nerve build ${currentLabel}; upstream release check unavailable`,
 );
-const latestCommand = "npx @nervekit/desktop@latest";
-const pinnedCommand = $derived(
-  latestRelease ? `npx @nervekit/desktop@${latestRelease.version}` : "",
-);
-let copiedCommand = $state<"latest" | "pinned" | undefined>();
-let copyResetTimer: ReturnType<typeof setTimeout> | undefined;
-
-async function copyCommand(
-  command: string,
-  commandId: "latest" | "pinned",
-): Promise<void> {
-  try {
-    await writeClipboardText(command);
-  } catch {
-    return;
-  }
-  copiedCommand = commandId;
-  if (copyResetTimer !== undefined) clearTimeout(copyResetTimer);
-  copyResetTimer = setTimeout(() => {
-    copiedCommand = undefined;
-    copyResetTimer = undefined;
-  }, 1_500);
-}
-
-onDestroy(() => {
-  if (copyResetTimer !== undefined) clearTimeout(copyResetTimer);
-});
 </script>
 
 <span
@@ -76,7 +43,7 @@ onDestroy(() => {
     {#snippet trigger()}{currentLabel}{/snippet}
 
     <PopoverBody>
-      <PopoverHeader title={`Nerve ${currentLabel}`}>
+      <PopoverHeader title={`Custom build ${currentLabel}`}>
         {#snippet action()}
           {#if latestLabel && latestRelease}
             <a
@@ -84,7 +51,7 @@ onDestroy(() => {
               target="_blank"
               rel="noreferrer"
               class="flex-none cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-              >Latest {latestLabel}</a
+              >Review upstream {latestLabel}</a
             >
           {/if}
         {/snippet}
@@ -92,89 +59,28 @@ onDestroy(() => {
 
       {#if outdated && latestLabel && latestRelease}
         <p class="text-warning">
-          This version is out of date. Update to {latestLabel} to use the latest stable
-          release.
+          Upstream {latestLabel} is available. Integrate it into your fork so your
+          customizations are preserved.
         </p>
         <PopoverSection separated>
-          <span class="text-muted-foreground">Run the latest release</span>
-          <div class="flex items-center rounded-sm bg-muted pl-2 pr-1">
-            <code class="min-w-0 flex-1 select-text py-1.5 text-foreground"
-              >{latestCommand}</code
-            >
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              ariaLabel={copiedCommand === "latest"
-                ? "Latest release command copied"
-                : "Copy latest release command"}
-              title={copiedCommand === "latest" ? "Copied" : "Copy command"}
-              onclick={() => void copyCommand(latestCommand, "latest")}
-            >
-              {#key copiedCommand === "latest"}
-                {#if copiedCommand === "latest"}
-                  <span
-                    class="inline-flex"
-                    transition:scale={{ duration: 120 }}
-                  >
-                    <Check class="size-3.5 text-success" aria-hidden="true" />
-                  </span>
-                {:else}
-                  <span
-                    class="inline-flex"
-                    transition:scale={{ duration: 120 }}
-                  >
-                    <Copy class="size-3.5" aria-hidden="true" />
-                  </span>
-                {/if}
-              {/key}
-            </Button>
-          </div>
-          <span class="mt-1 text-muted-foreground">Or pin this release</span>
-          <div class="flex items-center rounded-sm bg-muted pl-2 pr-1">
-            <code class="min-w-0 flex-1 select-text py-1.5 text-foreground"
-              >{pinnedCommand}</code
-            >
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              ariaLabel={copiedCommand === "pinned"
-                ? "Pinned release command copied"
-                : "Copy pinned release command"}
-              title={copiedCommand === "pinned" ? "Copied" : "Copy command"}
-              onclick={() => void copyCommand(pinnedCommand, "pinned")}
-            >
-              {#key copiedCommand === "pinned"}
-                {#if copiedCommand === "pinned"}
-                  <span
-                    class="inline-flex"
-                    transition:scale={{ duration: 120 }}
-                  >
-                    <Check class="size-3.5 text-success" aria-hidden="true" />
-                  </span>
-                {:else}
-                  <span
-                    class="inline-flex"
-                    transition:scale={{ duration: 120 }}
-                  >
-                    <Copy class="size-3.5" aria-hidden="true" />
-                  </span>
-                {/if}
-              {/key}
-            </Button>
-          </div>
+          <span class="font-medium text-foreground">Safe update workflow</span>
+          <ol class="list-decimal space-y-1 pl-4 text-muted-foreground">
+            <li>Commit your custom changes.</li>
+            <li>Merge the upstream release into your fork.</li>
+            <li>Test, then rebuild and install the custom Mac app.</li>
+          </ol>
         </PopoverSection>
         <span class="text-muted-foreground"
-          >Select the latest version above to open the release notes.</span
+          >The upstream package is not installed automatically.</span
         >
       {:else if latestLabel}
         <p class="text-muted-foreground">
-          No newer stable release is available. Select the latest version above
-          to open the release notes.
+          This custom build is based on the latest upstream stable release.
         </p>
       {:else}
         <p class="text-muted-foreground">
-          The latest release could not be checked. Nerve will retry
-          automatically.
+          The upstream release could not be checked. This custom build will not
+          be replaced automatically.
         </p>
       {/if}
     </PopoverBody>

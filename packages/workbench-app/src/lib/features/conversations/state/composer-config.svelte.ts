@@ -14,6 +14,7 @@ import { selection } from "$lib/features/workspace/state/selection.svelte";
 import { workspaceState } from "$lib/features/workspace/state/workspace-state.svelte";
 import { mainAgentForConversation } from "./main-agent";
 import {
+  clampServiceTierForModel,
   clampThinkingLevelForModel,
   supportedThinkingLevelsForModel,
 } from "./agent-selection-defaults";
@@ -40,7 +41,11 @@ export function selectedModelInfo(): ModelInfo | undefined {
   );
 }
 
-export { clampThinkingLevelForModel, supportedThinkingLevelsForModel };
+export {
+  clampServiceTierForModel,
+  clampThinkingLevelForModel,
+  supportedThinkingLevelsForModel,
+};
 
 export function supportedThinkingLevelsForSelectedModel(): AgentRecord["thinkingLevel"][] {
   return supportedThinkingLevelsForModel(selectedModelInfo());
@@ -73,6 +78,13 @@ export function selectedThinkingLevel(): AgentRecord["thinkingLevel"] {
   );
 }
 
+export function selectedServiceTier(): AgentRecord["serviceTier"] {
+  return clampServiceTierForModel(
+    conversationState.selectedServiceTier,
+    selectedModelInfo(),
+  );
+}
+
 /**
  * Composer setters mutate local state synchronously (immediate display) and
  * enqueue one coalesced, serialized `agent.configure` mutation per agent.
@@ -81,27 +93,35 @@ export function selectedThinkingLevel(): AgentRecord["thinkingLevel"] {
  */
 export function setComposerModel(key: string) {
   conversationState.selectedModelKey = key;
-  // Clamp thinking locally from the already-loaded model info.
+  // Clamp thinking / service tier locally from the already-loaded model info.
   const thinkingLevel = clampThinkingLevelForModel(
     conversationState.selectedThinkingLevel,
     selectedModelInfo(),
   );
+  const serviceTier = clampServiceTierForModel(
+    conversationState.selectedServiceTier,
+    selectedModelInfo(),
+  );
   conversationState.selectedThinkingLevel = thinkingLevel;
+  conversationState.selectedServiceTier = serviceTier;
   const pending = activePendingComposerConversation();
   if (pending) {
     pending.selectedModelKey = key;
     pending.thinkingLevel = thinkingLevel;
+    pending.serviceTier = serviceTier;
   }
   const model = selectedModel();
   rememberLastAgentSelection({
     ...(model ? { model } : {}),
     thinkingLevel,
+    serviceTier,
   });
   const agentId = currentActiveAgent()?.id;
   if (pending || !agentId) return;
   queueAgentConfigChange(agentId, {
     model: model ?? null,
     thinkingLevel,
+    serviceTier,
   });
 }
 
@@ -114,6 +134,17 @@ export function setComposerThinkingLevel(level: AgentRecord["thinkingLevel"]) {
   const agentId = currentActiveAgent()?.id;
   if (pending || !agentId) return;
   queueAgentConfigChange(agentId, { thinkingLevel });
+}
+
+export function setComposerServiceTier(tier: AgentRecord["serviceTier"]) {
+  const serviceTier = clampServiceTierForModel(tier, selectedModelInfo());
+  conversationState.selectedServiceTier = serviceTier;
+  const pending = activePendingComposerConversation();
+  if (pending) pending.serviceTier = serviceTier;
+  rememberLastAgentSelection({ serviceTier });
+  const agentId = currentActiveAgent()?.id;
+  if (pending || !agentId) return;
+  queueAgentConfigChange(agentId, { serviceTier });
 }
 
 export function setComposerMode(mode: AgentRecord["mode"]) {
@@ -160,6 +191,7 @@ function approvalPoliciesEqual(
 export function agentNeedsComposerUpdate(agent: AgentRecord | undefined) {
   const desired = selectedModel();
   const thinkingLevel = selectedThinkingLevel();
+  const serviceTier = selectedServiceTier();
   const needsModel =
     desired &&
     modelKey(agent?.model ?? { provider: "", modelId: "" }) !==
@@ -172,13 +204,16 @@ export function agentNeedsComposerUpdate(agent: AgentRecord | undefined) {
     conversationState.selectedApprovalPolicy,
   );
   const needsThinking = agent?.thinkingLevel !== thinkingLevel;
+  const needsServiceTier = (agent?.serviceTier ?? "default") !== serviceTier;
   return {
     desired,
     thinkingLevel,
+    serviceTier,
     needsModel,
     needsMode,
     needsPermission,
     needsApprovalPolicy,
     needsThinking,
+    needsServiceTier,
   };
 }

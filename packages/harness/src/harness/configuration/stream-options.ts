@@ -43,6 +43,8 @@ export function applyStreamOptionsPatch(
     result.maxRetryDelayMs = patch.maxRetryDelayMs;
   if (Object.hasOwn(patch, "cacheRetention"))
     result.cacheRetention = patch.cacheRetention;
+  if (Object.hasOwn(patch, "serviceTier"))
+    result.serviceTier = patch.serviceTier;
 
   if (Object.hasOwn(patch, "headers")) {
     if (patch.headers === undefined) {

@@ -63,6 +63,7 @@ describe("ProjectEditorService", () => {
   it("returns unavailable statuses and rejects an unavailable editor", async () => {
     const service = new ProjectEditorService(() => project, {
       locate: async () => undefined,
+      appPathExists: async () => false,
     });
 
     const statuses = await service.refresh();

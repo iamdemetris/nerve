@@ -29,6 +29,7 @@ export { default as GitPullRequestsPanelView } from "./git/GitPullRequestsPanelV
 export * from "./git/git-panel-controller.js";
 export * from "./git/git-panel-types.js";
 export { default as TasksPanelView } from "./tasks/TasksPanelView.svelte";
+export { default as TerminalPanelView } from "./tasks/TerminalPanelView.svelte";
 export * from "./tasks/task-panel-controller.js";
 export * from "./tasks/task-panel-types.js";
 export * from "./state/index.js";

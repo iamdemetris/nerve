@@ -194,6 +194,7 @@ export async function executeWorkbenchHarness(
           activeToolNames: environment.policy.activeToolNames,
           model: environment.model,
           thinkingLevel: agent.thinkingLevel,
+          streamOptions: streamOptionsForAgent(agent),
           getApiKeyAndHeaders: environment.credentials,
           systemPrompt: composeLatestSystemPrompt,
         }),
@@ -633,6 +634,14 @@ export async function executeWorkbenchHarness(
       if (harness.getThinkingLevel() !== updatedAgent.thinkingLevel) {
         await harness.setThinkingLevel(updatedAgent.thinkingLevel);
       }
+      const nextStreamOptions = streamOptionsForAgent(updatedAgent);
+      const currentStreamOptions = harness.getStreamOptions();
+      if (currentStreamOptions.serviceTier !== nextStreamOptions.serviceTier) {
+        await harness.setStreamOptions({
+          ...currentStreamOptions,
+          serviceTier: nextStreamOptions.serviceTier,
+        });
+      }
     };
     // Expand `!!!` command blocks at harness-delivery time so steered and
     // queued prompts get the same command semantics as run-starting prompts.
@@ -758,4 +767,12 @@ export async function executeWorkbenchHarness(
   } finally {
     this.finishAutoCompactionRun?.(runId);
   }
+}
+
+function streamOptionsForAgent(agent: AgentRecord): {
+  serviceTier?: "default" | "priority";
+} {
+  return agent.serviceTier === "priority"
+    ? { serviceTier: "priority" }
+    : { serviceTier: undefined };
 }

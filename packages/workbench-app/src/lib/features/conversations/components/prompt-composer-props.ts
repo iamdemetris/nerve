@@ -16,6 +16,7 @@ import type { ComposerSuggestion } from "./composer-suggestion";
 export type Mode = AgentRecord["mode"];
 export type PermissionLevel = AgentRecord["permissionLevel"];
 export type ThinkingLevel = AgentRecord["thinkingLevel"];
+export type ServiceTier = AgentRecord["serviceTier"];
 export type ApprovalPolicy = AgentRecord["approvalPolicy"];
 
 export type PromptComposerProps = {
@@ -41,6 +42,7 @@ export type PromptComposerProps = {
   composerEscapeToken?: number;
   micShortcutToken?: number;
   thinkingLevel?: ThinkingLevel;
+  serviceTier?: ServiceTier;
   mode?: Mode;
   permissionLevel?: PermissionLevel;
   approvalPolicy?: ApprovalPolicy;
@@ -55,6 +57,7 @@ export type PromptComposerProps = {
   onCompact?: () => void;
   onModelChange?: (value: string) => void;
   onThinkingLevelChange?: (value: ThinkingLevel) => void;
+  onServiceTierChange?: (value: ServiceTier) => void;
   onModeChange?: (value: Mode) => void;
   onPermissionChange?: (value: PermissionLevel) => void;
   onApprovalPolicyChange?: (value: ApprovalPolicy) => void;

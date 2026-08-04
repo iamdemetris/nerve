@@ -1,4 +1,5 @@
 import {
+  EXPLORE_MAX_ACTIVE_CHILDREN_GLOBAL,
   EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN,
   EXPLORE_MAX_CHILDREN_PER_RUN,
 } from "@nervekit/contracts";
@@ -37,6 +38,8 @@ export class ExploreRunLimitError extends Error {
 /** Runtime-only Explore limits keyed by the owning parent run. */
 export class WorkbenchExploreAdmission {
   private readonly states = new Map<string, AdmissionState>();
+  private readonly queuedKeys: string[] = [];
+  private globalActive = 0;
   private nextLocalId = 0;
 
   reserveBatch(
@@ -76,6 +79,7 @@ export class WorkbenchExploreAdmission {
     const state = this.states.get(parentRunId);
     if (!state) return;
     this.states.delete(parentRunId);
+    this.removeQueuedKey(parentRunId);
     for (const waiter of state.queue.splice(0)) {
       this.detachAbort(waiter);
       waiter.reject(abortError());
@@ -91,10 +95,13 @@ export class WorkbenchExploreAdmission {
     if (signal?.aborted) return Promise.reject(abortError());
     if (
       this.states.get(key) === state &&
+      this.globalActive < EXPLORE_MAX_ACTIVE_CHILDREN_GLOBAL &&
       state.active < EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN &&
-      state.queue.length === 0
+      state.queue.length === 0 &&
+      this.queuedKeys.length === 0
     ) {
       state.active += 1;
+      this.globalActive += 1;
       return Promise.resolve(this.releaseHandle(key, state));
     }
 
@@ -105,14 +112,17 @@ export class WorkbenchExploreAdmission {
         waiter.onAbort = () => {
           const index = state.queue.indexOf(waiter);
           if (index >= 0) state.queue.splice(index, 1);
+          if (state.queue.length === 0) this.removeQueuedKey(key);
           this.detachAbort(waiter);
           reject(abortError());
+          this.drain();
           this.deleteLocalStateIfIdle(key, state);
         };
         signal.addEventListener("abort", waiter.onAbort, { once: true });
       }
       state.queue.push(waiter);
-      this.drain(key, state);
+      if (state.queue.length === 1) this.queuedKeys.push(key);
+      this.drain();
     });
   }
 
@@ -122,25 +132,50 @@ export class WorkbenchExploreAdmission {
       if (released) return;
       released = true;
       state.active = Math.max(0, state.active - 1);
-      this.drain(key, state);
+      this.globalActive = Math.max(0, this.globalActive - 1);
+      this.drain();
       this.deleteLocalStateIfIdle(key, state);
     };
   }
 
-  private drain(key: string, state: AdmissionState): void {
-    if (this.states.get(key) !== state) return;
+  private drain(): void {
+    let checkedWithoutAdmission = 0;
     while (
-      state.active < EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN &&
-      state.queue.length > 0
+      this.globalActive < EXPLORE_MAX_ACTIVE_CHILDREN_GLOBAL &&
+      this.queuedKeys.length > 0 &&
+      checkedWithoutAdmission < this.queuedKeys.length
     ) {
+      const key = this.queuedKeys.shift()!;
+      const state = this.states.get(key);
+      if (!state || state.queue.length === 0) {
+        checkedWithoutAdmission = 0;
+        continue;
+      }
+      if (state.active >= EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN) {
+        this.queuedKeys.push(key);
+        checkedWithoutAdmission += 1;
+        continue;
+      }
       const waiter = state.queue.shift()!;
+      if (state.queue.length > 0) this.queuedKeys.push(key);
       this.detachAbort(waiter);
       if (waiter.signal?.aborted) {
         waiter.reject(abortError());
+        checkedWithoutAdmission = 0;
         continue;
       }
       state.active += 1;
+      this.globalActive += 1;
       waiter.resolve(this.releaseHandle(key, state));
+      checkedWithoutAdmission = 0;
+    }
+  }
+
+  private removeQueuedKey(key: string): void {
+    let index = this.queuedKeys.indexOf(key);
+    while (index >= 0) {
+      this.queuedKeys.splice(index, 1);
+      index = this.queuedKeys.indexOf(key);
     }
   }
 
@@ -158,6 +193,7 @@ export class WorkbenchExploreAdmission {
       state.batches === 0
     ) {
       this.states.delete(key);
+      this.removeQueuedKey(key);
     }
   }
 }

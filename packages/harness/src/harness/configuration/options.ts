@@ -70,6 +70,12 @@ export interface AgentHarnessStreamOptions {
   cacheRetention?: SimpleStreamOptions["cacheRetention"];
   /** Provider-scoped environment values forwarded to pi-ai. */
   env?: SimpleStreamOptions["env"];
+  /**
+   * OpenAI Responses / Codex service tier. Injected into the request body as
+   * `service_tier` because pi-ai's streamSimple path does not forward it.
+   * Use `"priority"` for Fast mode; omit or `"default"` for Standard.
+   */
+  serviceTier?: "default" | "priority";
 }
 
 /** Per-request stream option patch returned by provider hooks. */

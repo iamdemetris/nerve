@@ -10,6 +10,11 @@ export interface AgentModelInfo extends AgentModelSelection {
   name: string;
   reasoning: boolean;
   supportedThinkingLevels: ThinkingLevel[];
+  /**
+   * True when the model family accepts OpenAI-style `service_tier`
+   * (Standard / Fast) — Responses / Codex Responses APIs.
+   */
+  supportsServiceTier: boolean;
   /** Accepted input modalities from the model catalog; `["text"]` when unknown. */
   input: ("text" | "image")[];
   contextWindow: number;

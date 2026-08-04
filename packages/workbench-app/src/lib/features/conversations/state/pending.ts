@@ -26,6 +26,7 @@ export function openPendingConversation(project: ProjectRecord) {
     : {
         selectedModelKey: conversationState.selectedModelKey,
         selectedThinkingLevel: conversationState.selectedThinkingLevel,
+        selectedServiceTier: conversationState.selectedServiceTier,
         selectedMode: conversationState.selectedMode,
         selectedPermissionLevel: conversationState.selectedPermissionLevel,
         selectedApprovalPolicy: conversationState.selectedApprovalPolicy,
@@ -38,6 +39,7 @@ export function openPendingConversation(project: ProjectRecord) {
     composerText: "",
     selectedModelKey: defaults.selectedModelKey,
     thinkingLevel: defaults.selectedThinkingLevel,
+    serviceTier: defaults.selectedServiceTier,
     mode: defaults.selectedMode,
     permissionLevel: defaults.selectedPermissionLevel,
     approvalPolicy: defaults.selectedApprovalPolicy,
@@ -59,6 +61,7 @@ export function selectPendingConversation(pendingId: string) {
   composerDraft.projectDir = pending.projectDir;
   conversationState.selectedModelKey = pending.selectedModelKey;
   conversationState.selectedThinkingLevel = pending.thinkingLevel;
+  conversationState.selectedServiceTier = pending.serviceTier;
   conversationState.selectedMode = pending.mode;
   conversationState.selectedPermissionLevel = pending.permissionLevel;
   conversationState.selectedApprovalPolicy = pending.approvalPolicy;

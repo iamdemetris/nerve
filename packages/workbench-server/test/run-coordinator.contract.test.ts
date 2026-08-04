@@ -321,6 +321,33 @@ test("constructs before committing started and enforces durable exclusivity", as
   assert.equal(harness.published.size, 1);
 });
 
+test("launches ten independent primary chats without admission queuing", async () => {
+  const harness = fixture();
+  const runs = await Promise.all(
+    Array.from({ length: 10 }, (_, index) =>
+      harness.coordinator.start({
+        conversationId: `conv_${index}`,
+        agentId: `agent_${index}`,
+        projectId: `proj_${index}`,
+        prompt: `hello ${index}`,
+        scopeId: `conv_${index}:agent_${index}`,
+      }),
+    ),
+  );
+
+  await waitUntil(async () => harness.executionInputs.length === 10);
+  assert.equal(harness.executionInputs.length, 10);
+  assert.deepEqual(
+    new Set(
+      (await harness.unitOfWork.listActive()).map((state) => state.run.runId),
+    ),
+    new Set(runs.map((run) => run.runId)),
+  );
+
+  harness.finishExecution({ status: "completed" });
+  await harness.coordinator.settled();
+});
+
 test("keeps accepted prompts queued until the execution reports delivery", async () => {
   const harness = fixture();
   const run = await start(harness.coordinator);

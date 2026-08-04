@@ -1,7 +1,7 @@
 import type { Message } from "@earendil-works/pi-ai";
-import { listAvailableModels } from "@nervekit/harness";
 import type {
   AgentRecord,
+  AuthProviderMetadata,
   CancelTaskRequest,
   CompactConversationRequest,
   ContextUsage,
@@ -44,6 +44,7 @@ import type { IndexStore } from "../infrastructure/index-store/index.js";
 import type { SecretProvider } from "../infrastructure/secrets/index.js";
 import type { InitializedStorage } from "../infrastructure/storage/index.js";
 import { composeRuntime, type RuntimeServices } from "./runtime-composition.js";
+import { listWorkbenchModels } from "./runtime-model-listing.js";
 import { RuntimeState } from "./runtime-state.js";
 import type { AppendEntryInput, AppendEntryOptions } from "./types.js";
 
@@ -157,6 +158,7 @@ export class RuntimeRegistry {
       await settleHydrationOperations([
         this.auth.refreshModels({ allowNetwork: false }),
         this.providerCatalog.load(),
+        this.services.acpModels.hydrate(),
         workersHydrated,
         this.tasks.hydrate(),
         this.tools.hydrate(),
@@ -177,6 +179,11 @@ export class RuntimeRegistry {
       await this.services.taskNotifications.recoverPendingNotifications();
     });
     const stateDurationMs = Math.round(performance.now() - stateStartedAt);
+    // Discovery launches each agent CLI, so it must never sit on the startup
+    // path; the cached list serves until it finishes.
+    this.trackBackgroundOperation(
+      this.services.acpModels.refresh(process.cwd()),
+    );
     const indexStartedAt = performance.now();
     await this.rebuildIndex();
     await this.promptSuggestions.hydrate();
@@ -686,21 +693,13 @@ export class RuntimeRegistry {
     return this.providerCatalog;
   }
 
+  /** Providers backed by an external agent CLI rather than stored credentials. */
+  listAcpProviders(): AuthProviderMetadata[] {
+    return this.services.acpModels.providerMetadata();
+  }
+
   listModels(): ModelInfo[] {
-    return listAvailableModels(this.providerCatalog.resolvedModels()).map(
-      (model) => ({
-        provider: model.provider,
-        modelId: model.modelId,
-        name: model.name,
-        label: model.provider === "nerve-faux" ? "Nerve Faux Fast" : model.name,
-        reasoning: model.reasoning,
-        input: model.input,
-        supportedThinkingLevels: model.supportedThinkingLevels,
-        faux: model.provider === "nerve-faux",
-        contextWindow: model.contextWindow,
-        maxOutputTokens: model.maxOutputTokens,
-      }),
-    );
+    return listWorkbenchModels(this.providerCatalog, this.services.acpModels);
   }
 
   async listQueuedPrompts(agentId: string) {

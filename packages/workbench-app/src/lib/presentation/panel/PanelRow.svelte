@@ -47,6 +47,7 @@ let {
   badges,
   actions,
   menuItems,
+  labelClass,
   class: className,
   onclick,
   ondblclick,
@@ -101,6 +102,7 @@ let {
   badges?: Snippet;
   actions?: Snippet;
   menuItems?: ContextMenuItem[];
+  labelClass?: string;
   class?: string;
   onclick?: (event: MouseEvent) => void;
   ondblclick?: (event: MouseEvent) => void;
@@ -194,6 +196,7 @@ const toneClass = $derived(
                 toneClass,
                 mono && "font-mono",
                 active && "font-medium",
+                labelClass,
               )}>{label}</span
             >
             {#if labelTrailing}
@@ -221,6 +224,7 @@ const toneClass = $derived(
             toneClass,
             mono && "font-mono",
             active && "font-medium",
+            labelClass,
           )}>{label}</span
         >
         {#if description}

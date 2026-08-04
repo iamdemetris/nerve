@@ -58,6 +58,7 @@ export type WorkbenchConversationAdapterProps = {
   composerEscapeToken?: number;
   micShortcutToken?: number;
   thinkingLevel?: AgentRecord["thinkingLevel"];
+  serviceTier?: AgentRecord["serviceTier"];
   mode?: AgentRecord["mode"];
   permissionLevel?: AgentRecord["permissionLevel"];
   approvalPolicy?: AgentRecord["approvalPolicy"];
@@ -79,6 +80,7 @@ export type WorkbenchConversationAdapterProps = {
   onOpenFile?: (path: string, line?: number) => void;
   onModelChange?: (value: string) => void;
   onThinkingLevelChange?: (value: AgentRecord["thinkingLevel"]) => void;
+  onServiceTierChange?: (value: AgentRecord["serviceTier"]) => void;
   onModeChange?: (value: AgentRecord["mode"]) => void;
   onPermissionChange?: (value: AgentRecord["permissionLevel"]) => void;
   onApprovalPolicyChange?: (value: AgentRecord["approvalPolicy"]) => void;

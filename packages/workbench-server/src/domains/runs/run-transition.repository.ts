@@ -27,6 +27,7 @@ import {
 
 export class WorkbenchRunUnitOfWork implements RunUnitOfWorkPort {
   private readonly locks = new Map<string, Promise<void>>();
+  private readonly materializedRuns = new Set<string>();
   private readonly cache: BoundedRunStateCache;
   private readonly lookup = new ActiveRunLookup({
     load: (runId) => this.load(runId),
@@ -168,18 +169,45 @@ export class WorkbenchRunUnitOfWork implements RunUnitOfWorkPort {
     });
   }
 
-  async materialize(state: RunHydratedState): Promise<void> {
+  async materialize(
+    state: RunHydratedState,
+    transition: RunTransitionRecord,
+  ): Promise<void> {
     const root = this.runRoot(state.run.runId);
-    await Promise.all([
+    const initialize = !this.materializedRuns.has(state.run.runId);
+    const writes = [
       atomicWriteJson(join(root, "state.json"), state.run, 0o600),
-      atomicWriteJson(join(root, "prompts.json"), state.prompts, 0o600),
-      atomicWriteJson(
-        join(root, "interactions.json"),
-        state.interactions,
-        0o600,
-      ),
-      atomicWriteJson(join(root, "checkpoints.json"), state.checkpoints, 0o600),
-    ]);
+    ];
+    if (initialize || transition.prompts.length > 0) {
+      writes.push(
+        atomicWriteJson(join(root, "prompts.json"), state.prompts, 0o600),
+      );
+    }
+    if (initialize || transition.interactions.length > 0) {
+      writes.push(
+        atomicWriteJson(
+          join(root, "interactions.json"),
+          state.interactions,
+          0o600,
+        ),
+      );
+    }
+    if (initialize || transition.checkpoints.length > 0) {
+      writes.push(
+        atomicWriteJson(
+          join(root, "checkpoints.json"),
+          state.checkpoints,
+          0o600,
+        ),
+      );
+    }
+    try {
+      await Promise.all(writes);
+      this.materializedRuns.add(state.run.runId);
+    } catch (error) {
+      this.materializedRuns.delete(state.run.runId);
+      throw error;
+    }
   }
 
   private async hydrate(runId: string): Promise<RunHydratedState | undefined> {
