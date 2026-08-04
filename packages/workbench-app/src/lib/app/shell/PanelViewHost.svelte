@@ -16,12 +16,15 @@ import { ConversationsPanelView } from "$lib/features/projects";
 import { NotesPanelView } from "$lib/features/scratch-notes";
 import {
   cancelSelectedTask,
+  loadEarlierTaskLogs,
   openTaskTab,
   pruneFinishedTasks,
   removeTask,
   restartSelectedTask,
   runTaskCommand,
+  selectTask,
   taskSelectors,
+  TerminalPanelView,
   TasksPanelView,
 } from "$lib/features/tasks";
 import {
@@ -56,6 +59,7 @@ const contextUsage = $derived(conversationSelectors.activeContextUsage);
 const contextWindow = $derived(conversationSelectors.activeContextWindow);
 const tasks = $derived(taskSelectors.scopedTasks);
 const selectedTask = $derived(taskSelectors.selectedTask);
+const taskLogs = $derived(taskSelectors.taskLogs);
 
 function selectAgent(agent: AgentRecord) {
   selection.agentId = agent.id;
@@ -95,6 +99,18 @@ function focusTasks() {
   />
 {:else if viewId === "notes"}
   <NotesPanelView {activeProject} />
+{:else if viewId === "terminal"}
+  <TerminalPanelView
+    {activeProject}
+    {tasks}
+    {selectedTask}
+    {taskLogs}
+    onSelectTask={(id) => selectTask(id)}
+    onRunCommand={(input) => runTaskCommand(input)}
+    onCancelTask={(id) => cancelSelectedTask(id)}
+    onRestartTask={(id) => restartSelectedTask(id)}
+    onLoadEarlier={(id) => loadEarlierTaskLogs(id)}
+  />
 {:else if viewId === "tasks"}
   <TasksPanelView
     {activeProject}

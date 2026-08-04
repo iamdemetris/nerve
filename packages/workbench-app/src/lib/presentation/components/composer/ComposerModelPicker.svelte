@@ -213,28 +213,32 @@ $effect(() => {
               ariaLabel="Search models"
             />
             {#if providerChips.length > 2}
-              <ToggleGroup.Root
-                type="single"
-                size="xs"
-                spacing={1}
-                variant="outline"
-                value={providerFilter}
-                aria-label="Filter by provider"
-                class="w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain"
-                onValueChange={(value) => {
-                  if (value) providerFilter = value;
-                }}
+              <div
+                class="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-1.5 overscroll-x-contain"
               >
-                {#each providerChips as chip (chip.id)}
-                  <ToggleGroup.Item
-                    value={chip.id}
-                    class="flex-none gap-1.5 text-xs"
-                  >
-                    {chip.label}
-                    <span class="text-muted-foreground">{chip.count}</span>
-                  </ToggleGroup.Item>
-                {/each}
-              </ToggleGroup.Root>
+                <ToggleGroup.Root
+                  type="single"
+                  size="xs"
+                  spacing={1}
+                  variant="outline"
+                  value={providerFilter}
+                  aria-label="Filter by provider"
+                  class="w-max min-w-full flex-nowrap justify-start"
+                  onValueChange={(value) => {
+                    if (value) providerFilter = value;
+                  }}
+                >
+                  {#each providerChips as chip (chip.id)}
+                    <ToggleGroup.Item
+                      value={chip.id}
+                      class="flex-none gap-1.5 text-xs"
+                    >
+                      {chip.label}
+                      <span class="text-muted-foreground">{chip.count}</span>
+                    </ToggleGroup.Item>
+                  {/each}
+                </ToggleGroup.Root>
+              </div>
             {/if}
           {/if}
           {#if filteredModels.length === 0}

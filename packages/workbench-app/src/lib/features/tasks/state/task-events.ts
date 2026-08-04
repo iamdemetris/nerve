@@ -55,10 +55,11 @@ function handleTaskLogEvent(event: { data?: Record<string, unknown> }): void {
   const taskId = String(event.data?.taskId ?? "");
   const task = taskState.tasks.find((candidate) => candidate.id === taskId);
   const entryId = task?.definitionId ?? task?.restartRootTaskId ?? taskId;
-  const viewingTask =
+  const viewingCenterTask =
     workspaceState.activeCenterTab?.kind === "task" &&
     workspaceState.activeCenterTab.id === entryId;
-  if (taskId && taskId === taskState.selectedTaskId && viewingTask) {
+  const outputVisible = viewingCenterTask || taskState.terminalPanelVisible;
+  if (taskId && taskId === taskState.selectedTaskId && outputVisible) {
     void refreshTaskLogWindow(taskId).catch(() => undefined);
   }
 }

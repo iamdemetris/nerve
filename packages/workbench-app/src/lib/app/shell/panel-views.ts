@@ -50,6 +50,13 @@ export const panelViewDescriptors: PanelViewDescriptor[] = [
     defaultOrder: 2,
   },
   {
+    id: "terminal",
+    title: "Terminal",
+    icon: Terminal,
+    defaultDock: "right",
+    defaultOrder: 3,
+  },
+  {
     id: "tasks",
     title: "Tasks",
     icon: Terminal,

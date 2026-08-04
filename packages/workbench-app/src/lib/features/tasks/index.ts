@@ -1,5 +1,6 @@
 export * from "./api/tasks.api";
 export { default as TaskShell } from "./components/TaskShell.svelte";
+export { default as TerminalPanelView } from "./components/TerminalPanelView.svelte";
 export { default as TasksPanelView } from "./components/TasksPanelView.svelte";
 export { taskSelectors } from "./state/task-selectors.svelte";
 export { taskState } from "./state/task-state.svelte";
@@ -10,4 +11,6 @@ export {
   removeTask,
   restartSelectedTask,
   runTaskCommand,
+  selectTask,
 } from "./state/tasks.svelte";
+export { loadEarlierTaskLogs } from "./state/task-logs.svelte";
