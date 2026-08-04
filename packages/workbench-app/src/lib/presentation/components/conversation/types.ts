@@ -8,6 +8,7 @@ import type {
   PlanReviewRecord,
   ProjectRecord,
   QueuedPromptRecord,
+  ServiceTier,
   ThinkingLevel,
   TodoItem,
   ToolCallTranscriptRecord,
@@ -53,6 +54,7 @@ export type ConversationComposerModel = {
   models: ModelInfo[];
   selectedModelKey: string;
   thinkingLevel: ThinkingLevel;
+  serviceTier: ServiceTier;
   mode: Mode;
   permissionLevel: PermissionLevel;
   approvalPolicy: ApprovalPolicy;
@@ -79,6 +81,8 @@ export type ConversationComposerModel = {
   todos?: TodoItem[];
   slashCompletions?: CompletionItem[];
   fileCompletions?: (query: string) => Promise<CompletionItem[]>;
+  /** Label shown while dragging files over the composer drop target. */
+  dropOverlayLabel?: string;
   capabilities?: ConversationComposerCapabilities;
 };
 
@@ -119,6 +123,7 @@ export type ConversationPaneActions = {
   onCompact?: () => void;
   onModelChange?: (value: string) => void;
   onThinkingLevelChange?: (value: ThinkingLevel) => void;
+  onServiceTierChange?: (value: ServiceTier) => void;
   onModeChange?: (value: Mode) => void;
   onPermissionChange?: (value: PermissionLevel) => void;
   onApprovalPolicyChange?: (value: ApprovalPolicy) => void;

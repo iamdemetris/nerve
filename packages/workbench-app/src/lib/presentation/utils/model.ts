@@ -27,6 +27,10 @@ const providerDisplayNames: Record<string, string> = {
   "openai-codex": "OpenAI Codex",
   openrouter: "OpenRouter",
   xai: "xAI",
+  // Agent CLIs the user authenticates themselves; the `-cli` suffix keeps them
+  // distinct from same-named hosted APIs and is noise in the picker.
+  "cursor-cli": "Cursor",
+  "opencode-cli": "OpenCode",
 };
 
 function titleCaseProviderToken(token: string): string {
@@ -74,8 +78,10 @@ export function formatTokenCapacity(tokens: number): string {
   return `${tokens}`;
 }
 
-export function supportsImageInput(model: ModelInfo): boolean {
-  return model.input?.includes("image") ?? false;
+export function supportsImageInput(
+  model: ModelInfo | undefined | null,
+): boolean {
+  return model?.input?.includes("image") ?? false;
 }
 
 export function modelNameCounts(models: ModelInfo[]): Map<string, number> {

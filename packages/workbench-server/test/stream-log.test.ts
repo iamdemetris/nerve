@@ -193,6 +193,34 @@ describe("StreamLogRegistry", () => {
     }
   });
 
+  it("writes background snapshots without fsync until a durable boundary", async () => {
+    const home = await tempHome();
+    let fsyncs = 0;
+    let finishBackground!: () => void;
+    const backgroundFinished = new Promise<void>((resolve) => {
+      finishBackground = resolve;
+    });
+    const log = await StreamLog.open({
+      stream: "test",
+      logPath: join(home, "events.jsonl"),
+      metaPath: join(home, "events.meta.json"),
+      flushEventThreshold: 1,
+      onFsync: () => (fsyncs += 1),
+      onFlushCompleted: () => finishBackground(),
+    });
+    try {
+      await log.append("evt_snapshot", "test.event", { value: 1 }, true);
+      await backgroundFinished;
+      assert.equal(fsyncs, 0);
+
+      await log.append("evt_boundary", "test.event", { value: 2 }, false);
+      assert.equal(fsyncs, 1);
+    } finally {
+      await log.close();
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
   it("does not let a slow conversation stream block other streams", async () => {
     const home = await tempHome();
     const renameStarted = deferred();

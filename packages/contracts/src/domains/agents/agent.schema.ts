@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { modelSelectionSchema, thinkingLevelSchema } from "../models/index.js";
+import {
+  modelSelectionSchema,
+  serviceTierSchema,
+  thinkingLevelSchema,
+} from "../models/index.js";
 import {
   approvalPolicySchema,
   defaultApprovalPolicy,
@@ -23,6 +27,7 @@ export const updateAgentRequestSchema = z.object({
   approvalPolicy: approvalPolicyPatchSchema.optional(),
   model: modelSelectionSchema.nullable().optional(),
   thinkingLevel: thinkingLevelSchema.optional(),
+  serviceTier: serviceTierSchema.optional(),
 });
 export type UpdateAgentRequest = z.infer<typeof updateAgentRequestSchema>;
 
@@ -65,6 +70,7 @@ export const agentRecordSchema = z.object({
   }),
   model: modelSelectionSchema.optional(),
   thinkingLevel: thinkingLevelSchema.default("off"),
+  serviceTier: serviceTierSchema.default("default"),
   status: agentStatusSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -86,6 +92,7 @@ export const createAgentRequestSchema = z.object({
   budget: createAgentBudgetRequestSchema.optional(),
   model: modelSelectionSchema.optional(),
   thinkingLevel: thinkingLevelSchema.optional(),
+  serviceTier: serviceTierSchema.optional(),
 });
 export type CreateAgentRequest = z.infer<typeof createAgentRequestSchema>;
 

@@ -23,10 +23,19 @@ export {
 export type NewAgentComposerSelection = {
   selectedModelKey: string;
   selectedThinkingLevel: AgentRecord["thinkingLevel"];
+  selectedServiceTier: AgentRecord["serviceTier"];
   selectedMode: AgentRecord["mode"];
   selectedPermissionLevel: AgentRecord["permissionLevel"];
   selectedApprovalPolicy: AgentRecord["approvalPolicy"];
 };
+
+export function clampServiceTierForModel(
+  tier: AgentRecord["serviceTier"] | undefined,
+  model: ModelInfo | undefined,
+): AgentRecord["serviceTier"] {
+  if (tier === "priority" && model?.supportsServiceTier) return "priority";
+  return "default";
+}
 
 export function effectiveNewAgentDefaults(settings: Settings) {
   return settings.rememberLastAgentSelection
@@ -37,6 +46,7 @@ export function effectiveNewAgentDefaults(settings: Settings) {
         approvalPolicy: settings.defaultApprovalPolicy,
         model: settings.defaultModel,
         thinkingLevel: settings.defaultThinkingLevel,
+        serviceTier: settings.defaultServiceTier,
       };
 }
 
@@ -61,6 +71,10 @@ export function resolveNewAgentComposerSelection(
     selectedModelKey: fallbackModel ? modelKey(fallbackModel) : "",
     selectedThinkingLevel: clampThinkingLevelForModel(
       defaults.thinkingLevel,
+      fallbackModel,
+    ),
+    selectedServiceTier: clampServiceTierForModel(
+      defaults.serviceTier,
       fallbackModel,
     ),
     selectedMode: defaults.mode,

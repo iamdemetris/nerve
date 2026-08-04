@@ -119,11 +119,13 @@ function submit(): void {
       models={model.models}
       selectedModelKey={model.selectedModelKey}
       thinkingLevel={model.thinkingLevel}
+      serviceTier={model.serviceTier}
       {runtimeChangeHint}
       modelEmptyMessage={model.modelEmptyMessage ??
         "No models available. Configure a provider in this host."}
       onModelChange={actions.onModelChange}
       onThinkingLevelChange={actions.onThinkingLevelChange}
+      onServiceTierChange={actions.onServiceTierChange}
       onPermissionChange={actions.onPermissionChange}
       onApprovalPolicyChange={actions.onApprovalPolicyChange}
     />
@@ -137,6 +139,7 @@ function submit(): void {
       slashCompletions={model.slashCompletions}
       fileCompletions={model.fileCompletions}
       focusToken={model.focusToken ?? 0}
+      dropOverlayLabel={model.dropOverlayLabel}
       onChange={actions.onComposerChange}
       onSubmit={submit}
       onPasteImage={actions.onPasteImage}

@@ -57,7 +57,7 @@ export class StreamLogRegistry {
   publish<T>(type: string, data: T): Promise<PublishedEvent<T>> {
     const normalized = validatePublicEvent(type, data, "workbench_server") as T;
     return this.#enqueueStream(eventQueueKey(type, normalized), () =>
-      this.#publishNow(createId("evt"), type, normalized, true),
+      this.#publishNow(createId("evt"), type, normalized, true, false),
     );
   }
 
@@ -93,7 +93,7 @@ export class StreamLogRegistry {
           }
           return existing as PublishedEvent<T>;
         }
-        return this.#publishNow(intentId, type, normalized, true);
+        return this.#publishNow(intentId, type, normalized, true, true);
       }),
     );
   }
@@ -182,6 +182,7 @@ export class StreamLogRegistry {
     type: string,
     data: T,
     alreadyValidated = false,
+    rememberIntent = false,
   ): Promise<PublishedEvent<T>> {
     const definition = publicEventDefinition(type);
     if (!definition) throw new Error(`Unknown public event: ${type}`);
@@ -192,7 +193,7 @@ export class StreamLogRegistry {
 
     if (definition.delivery === "ephemeral") {
       const event: NotifyEvent<T> = { id, ts, type, data: normalized };
-      this.#intentResults.set(id, event as NotifyEvent);
+      if (rememberIntent) this.#intentResults.set(id, event as NotifyEvent);
       for (const listener of this.#notifyListeners) {
         safelyNotify(() => listener(event as NotifyEvent), event.type);
       }
@@ -208,7 +209,7 @@ export class StreamLogRegistry {
         JSON.stringify(existing.data) !== JSON.stringify(normalized)
       )
         throw new Error(`Conflicting event intent id: ${id}`);
-      this.#intentResults.set(id, existing);
+      if (rememberIntent) this.#intentResults.set(id, existing);
       return existing as EventEnvelope<T>;
     }
     const event = (await log.append(
@@ -218,7 +219,7 @@ export class StreamLogRegistry {
       definition.supersedable,
       ts,
     )) as EventEnvelope<T>;
-    this.#intentResults.set(id, event as EventEnvelope);
+    if (rememberIntent) this.#intentResults.set(id, event as EventEnvelope);
     for (const listener of this.#eventListeners) {
       safelyNotify(() => listener(event as EventEnvelope), event.type);
     }

@@ -20,6 +20,7 @@ import {
   agentNeedsComposerUpdate,
   currentActiveAgent,
   selectedModel,
+  selectedServiceTier,
   selectedThinkingLevel,
 } from "$lib/features/conversations/state/composer-config.svelte";
 import { conversationState } from "$lib/features/conversations/state/conversation-state.svelte";
@@ -72,15 +73,18 @@ export async function ensureAgent(): Promise<string> {
     const {
       desired,
       thinkingLevel,
+      serviceTier,
       needsModel,
       needsMode,
       needsPermission,
       needsApprovalPolicy,
       needsThinking,
+      needsServiceTier,
     } = agentNeedsComposerUpdate(agent);
     const patch: AgentConfigPatch = {
       ...(needsModel && desired ? { model: desired } : {}),
       ...(needsThinking ? { thinkingLevel } : {}),
+      ...(needsServiceTier ? { serviceTier } : {}),
       ...(needsMode ? { mode: conversationState.selectedMode } : {}),
       ...(needsPermission
         ? { permissionLevel: conversationState.selectedPermissionLevel }
@@ -103,6 +107,7 @@ export async function ensureAgent(): Promise<string> {
         conversationId: selection.conversationId,
         model: selectedModel(),
         thinkingLevel: selectedThinkingLevel(),
+        serviceTier: selectedServiceTier(),
         mode: conversationState.selectedMode,
         permissionLevel: conversationState.selectedPermissionLevel,
         approvalPolicy: conversationState.selectedApprovalPolicy,
@@ -154,6 +159,7 @@ async function sendPendingPrompt(
 
   pending.selectedModelKey = conversationState.selectedModelKey;
   pending.thinkingLevel = selectedThinkingLevel();
+  pending.serviceTier = selectedServiceTier();
   pending.mode = conversationState.selectedMode;
   pending.permissionLevel = conversationState.selectedPermissionLevel;
   pending.approvalPolicy = conversationState.selectedApprovalPolicy;
@@ -180,6 +186,7 @@ async function sendPendingPrompt(
         conversationId: conversation.id,
         model: selectedModel(),
         thinkingLevel: pending.thinkingLevel,
+        serviceTier: pending.serviceTier,
         mode: pending.mode,
         permissionLevel: pending.permissionLevel,
         approvalPolicy: pending.approvalPolicy,

@@ -49,6 +49,7 @@ import {
   setComposerMode,
   setComposerModel,
   setComposerPermission,
+  setComposerServiceTier,
   setComposerThinkingLevel,
 } from "$lib/features/conversations/state/composer-config.svelte";
 import { ensureConversationView } from "$lib/features/conversations/state/state";
@@ -178,6 +179,12 @@ const selectedThinkingLevel = $derived(
     activeAgentConfigOverride?.thinkingLevel ??
     activeAgent?.thinkingLevel ??
     "off",
+);
+const selectedServiceTier = $derived(
+  activePendingConversation?.serviceTier ??
+    activeAgentConfigOverride?.serviceTier ??
+    activeAgent?.serviceTier ??
+    "default",
 );
 const selectedMode = $derived(
   activePendingConversation?.mode ??
@@ -400,6 +407,7 @@ function moveQueuedPromptToComposer(prompt: QueuedPromptRecord) {
   models={usableModels}
   {selectedModelKey}
   thinkingLevel={selectedThinkingLevel}
+  serviceTier={selectedServiceTier}
   planReviewModels={usableModels}
   {planReviewModelKey}
   {planReviewThinkingLevel}
@@ -436,6 +444,9 @@ function moveQueuedPromptToComposer(prompt: QueuedPromptRecord) {
   }}
   onThinkingLevelChange={(value) => {
     void runActivePaneAction(() => setComposerThinkingLevel(value));
+  }}
+  onServiceTierChange={(value) => {
+    void runActivePaneAction(() => setComposerServiceTier(value));
   }}
   onModeChange={(value) => {
     void runActivePaneAction(() => setComposerMode(value));

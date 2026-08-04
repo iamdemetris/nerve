@@ -10,18 +10,11 @@ import X from "@lucide/svelte/icons/x";
 import { Toolbar } from "bits-ui";
 import { NerveMark } from "$lib/presentation";
 import { ShellTitlebar } from "$lib/presentation/shell";
-import {
-  ProjectSwitcher,
-  type ProjectSwitcherItem,
-} from "$lib/features/projects";
 import { Button } from "@nervekit/ui-kit/components/ui/button";
-import type { ContextMenuItem } from "@nervekit/ui-kit/components/ui/context-menu-list";
 import type { LatestRelease } from "@nervekit/contracts";
 import VersionIndicator from "$lib/app/shell/VersionIndicator.svelte";
 
 type Props = {
-  projects?: ProjectSwitcherItem[];
-  activeProjectKey?: string;
   desktop?: boolean;
   maximized?: boolean;
   closeToTray?: boolean;
@@ -32,9 +25,6 @@ type Props = {
   applicationLogsEnabled?: boolean;
   currentVersion?: string;
   latestRelease?: LatestRelease;
-  buildProjectMenuItems?: (item: ProjectSwitcherItem) => ContextMenuItem[];
-  onOpenProject?: () => void;
-  onSelectProject?: (projectId: string) => void;
   onOpenLogs?: () => void;
   onOpenAuth?: () => void;
   onOpenSettings?: () => void;
@@ -44,8 +34,6 @@ type Props = {
 };
 
 let {
-  projects = [],
-  activeProjectKey,
   desktop = false,
   maximized = false,
   closeToTray = true,
@@ -56,9 +44,6 @@ let {
   applicationLogsEnabled = false,
   currentVersion,
   latestRelease,
-  buildProjectMenuItems,
-  onOpenProject,
-  onSelectProject,
   onOpenLogs,
   onOpenAuth,
   onOpenSettings,
@@ -73,14 +58,6 @@ let {
     <span class="inline-flex items-center gap-1.5 text-foreground">
       <span class="brand-mark"><NerveMark compact /></span>
     </span>
-    <span class="h-5 w-px bg-border" aria-hidden="true"></span>
-    <ProjectSwitcher
-      items={projects}
-      activeKey={activeProjectKey}
-      buildMenuItems={buildProjectMenuItems}
-      onSelect={onSelectProject}
-      onOpenPicker={onOpenProject}
-    />
   {/snippet}
 
   {#snippet actions()}

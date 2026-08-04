@@ -1,0 +1,15 @@
+{
+  "name": "@nervekit/mac-shell",
+  "version": "0.17.0",
+  "private": true,
+  "description": "Native macOS WKWebView shell for the Nerve workbench, used instead of Electron.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "bash scripts/build-app.sh",
+    "install:app": "bash scripts/install-app.sh"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

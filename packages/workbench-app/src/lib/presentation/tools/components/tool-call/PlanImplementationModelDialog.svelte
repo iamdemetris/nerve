@@ -164,7 +164,7 @@ $effect(() => {
               variant="outline"
               value={providerFilter}
               aria-label="Filter by provider"
-              class="flex-nowrap overflow-x-auto"
+              class="w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain"
               onValueChange={(value) => {
                 if (value) providerFilter = value;
               }}

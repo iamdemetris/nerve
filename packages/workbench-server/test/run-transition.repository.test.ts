@@ -111,7 +111,8 @@ test("workbench run journals reuse hot state and cold-hydrate equivalently", asy
   assert.equal(secondState.prompts[0]?.status, "delivered");
   assert.equal(await unitOfWork.load(runId), secondState);
 
-  await unitOfWork.materialize(secondState);
+  await unitOfWork.materialize(firstState, records.first);
+  await unitOfWork.materialize(secondState, records.second);
   const root = join(home, "run-runtime", "runs", runId);
   const projectionFiles = [
     ["state.json", secondState.run],

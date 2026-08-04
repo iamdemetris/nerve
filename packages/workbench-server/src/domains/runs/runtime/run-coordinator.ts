@@ -1123,7 +1123,7 @@ export class RunCoordinator {
         });
       }
       try {
-        await this.ports.unitOfWork.materialize(committed);
+        await this.ports.unitOfWork.materialize(committed, transition);
       } catch (error) {
         this.ports.diagnostics?.error("run projection materialization failed", {
           runId: run.runId,

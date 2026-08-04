@@ -11,6 +11,7 @@ import {
   type VoiceInputTarget,
 } from "$lib/core/audio/voice-input-session.svelte";
 import { AgentComposer } from "$lib/presentation/components/conversation";
+import { modelKey, supportsImageInput } from "$lib/presentation/utils/model";
 import { Button } from "@nervekit/ui-kit/components/ui/button";
 import {
   AudioInputAuthRequiredDialog,
@@ -23,6 +24,10 @@ import {
 } from "$lib/core/shortcuts/registry";
 import type { PromptComposerProps } from "../components/prompt-composer-props";
 import { deriveComposerAvailability } from "./composer-availability";
+import {
+  composerDropOverlayLabel,
+  partitionDroppedFiles,
+} from "./dropped-composer-media";
 import { resolveDroppedPaths } from "./dropped-paths";
 
 let {
@@ -47,6 +52,7 @@ let {
   composerEscapeToken = 0,
   micShortcutToken = 0,
   thinkingLevel = "off",
+  serviceTier = "default",
   mode = "coding",
   permissionLevel = "autonomous",
   approvalPolicy = { autoApproveReadOnly: true },
@@ -61,6 +67,7 @@ let {
   onCompact,
   onModelChange,
   onThinkingLevelChange,
+  onServiceTierChange,
   onModeChange,
   onPermissionChange,
   onApprovalPolicyChange,
@@ -134,7 +141,21 @@ const canPrompt = $derived(availability.canPrompt);
 const editorDisabled = $derived(!availability.canEdit);
 const submitDisabled = $derived(!availability.canSubmit);
 const chatGptAudioConfigured = $derived(chatGptAudioAuth.configured);
-const fileDropSupported = $derived(Boolean(getDesktopBridge()?.files));
+const selectedModelInfo = $derived(
+  models.find((model) => modelKey(model) === selectedModelKey),
+);
+/** Vision-capable models accept pasted or dropped images as temp local paths. */
+const imageInputSupported = $derived(supportsImageInput(selectedModelInfo));
+/** Desktop path mentions for non-image files/folders. */
+const pathDropSupported = $derived(Boolean(getDesktopBridge()?.files));
+/** Drop target is live when either path mentions or image attach is available. */
+const fileDropSupported = $derived(pathDropSupported || imageInputSupported);
+const dropOverlayLabel = $derived(
+  composerDropOverlayLabel({
+    imageDrop: imageInputSupported,
+    pathDrop: pathDropSupported,
+  }),
+);
 const supportsAudioRecording = $derived(voiceInputSession.isSupported());
 const micDisabled = $derived(
   !interactive ||
@@ -219,26 +240,86 @@ async function submitComposer() {
 }
 
 async function pasteImage(file: File): Promise<string> {
-  return uploadClipboardImage(file);
-}
-
-async function dropFiles(files: readonly File[]): Promise<readonly string[]> {
+  if (!imageInputSupported) {
+    const message =
+      "The selected model does not support image input. Switch to a vision-capable model.";
+    notify.error("Could not paste image", { description: message });
+    throw new Error(message);
+  }
   try {
-    const bridge = getDesktopBridge();
-    if (!bridge?.files || !activeProject) {
-      throw new Error("Native file paths are unavailable in this window.");
-    }
-    return resolveDroppedPaths(
-      files,
-      activeProject.dir,
-      bridge.files.getPathForFile,
-    );
+    return await uploadClipboardImage(file);
   } catch (caught) {
     const description =
       caught instanceof Error ? caught.message : String(caught);
-    notify.error("Could not add dropped paths", { description });
+    notify.error("Could not paste image", { description });
     throw caught;
   }
+}
+
+/**
+ * Image files → temporary paths (same pipeline as clipboard paste) when the
+ * model supports vision. Other files/folders → desktop path mentions.
+ */
+async function dropFiles(files: readonly File[]): Promise<readonly string[]> {
+  const { imageFiles, pathFiles } = partitionDroppedFiles(files);
+  const mentions: string[] = [];
+
+  if (imageFiles.length > 0) {
+    if (!imageInputSupported) {
+      notify.error("Could not add dropped images", {
+        description:
+          "The selected model does not support image input. Switch to a vision-capable model, or drop non-image files for path mentions on desktop.",
+      });
+    } else {
+      try {
+        for (const file of imageFiles) {
+          mentions.push(await uploadClipboardImage(file));
+        }
+      } catch (caught) {
+        const description =
+          caught instanceof Error ? caught.message : String(caught);
+        notify.error("Could not add dropped images", { description });
+        throw caught;
+      }
+    }
+  }
+
+  if (pathFiles.length > 0) {
+    try {
+      const bridge = getDesktopBridge();
+      if (!bridge?.files || !activeProject) {
+        throw new Error(
+          pathFiles.length === files.length
+            ? "Native file paths are unavailable in this window. On desktop, drop files for path mentions; image drops work when the model supports vision."
+            : "Non-image files need the desktop app for path mentions. Images were still attached when supported.",
+        );
+      }
+      mentions.push(
+        ...resolveDroppedPaths(
+          pathFiles,
+          activeProject.dir,
+          bridge.files.getPathForFile,
+        ),
+      );
+    } catch (caught) {
+      // If images already succeeded, keep them and surface a soft error for paths.
+      if (mentions.length > 0) {
+        const description =
+          caught instanceof Error ? caught.message : String(caught);
+        notify.error("Could not add all dropped paths", { description });
+      } else {
+        const description =
+          caught instanceof Error ? caught.message : String(caught);
+        notify.error("Could not add dropped paths", { description });
+        throw caught;
+      }
+    }
+  }
+
+  if (mentions.length === 0) {
+    throw new Error("Nothing could be added from the drop.");
+  }
+  return mentions;
 }
 
 const controlsDisabled = $derived(
@@ -331,6 +412,7 @@ function handleMicContextMenu(event: MouseEvent) {
     models,
     selectedModelKey,
     thinkingLevel,
+    serviceTier,
     mode,
     permissionLevel,
     approvalPolicy,
@@ -375,9 +457,10 @@ function handleMicContextMenu(event: MouseEvent) {
     todos,
     slashCompletions,
     fileCompletions,
+    dropOverlayLabel,
     capabilities: {
       voice: true,
-      imagePaste: true,
+      imagePaste: imageInputSupported,
       fileDrop: fileDropSupported,
       completions: true,
       suggestions: true,
@@ -393,10 +476,11 @@ function handleMicContextMenu(event: MouseEvent) {
     onCompact,
     onModelChange,
     onThinkingLevelChange,
+    onServiceTierChange,
     onModeChange,
     onPermissionChange,
     onApprovalPolicyChange,
-    onPasteImage: pasteImage,
+    onPasteImage: imageInputSupported ? pasteImage : undefined,
     onDropFiles: fileDropSupported ? dropFiles : undefined,
   }}
 >

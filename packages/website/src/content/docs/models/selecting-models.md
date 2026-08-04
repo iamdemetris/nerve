@@ -27,9 +27,18 @@ The full vocabulary is:
 
 Concrete support comes from model metadata and provider mappings. `xhigh` and `max` are only meaningful for selected model families. Runtime resolution clamps unsupported requests.
 
+## Service tier (Fast mode)
+
+For models on OpenAI Responses / Codex Responses APIs, the model picker can show a **Service tier** control:
+
+- **Standard** — default capacity (`service_tier: default`)
+- **Fast** — priority capacity for lower latency (`service_tier: priority`; higher cost)
+
+The option appears only when the selected model supports it (detected automatically from the model API family). Switching to a model without service tiers clamps back to Standard.
+
 ## Choosing well
 
-Use a fast model for small, well-scoped changes and a deeper supported thinking level for architecture or difficult debugging. Context size is not a quality score. Review provider price/terms rather than relying only on Nerve's cumulative cost display.
+Use a fast model for small, well-scoped changes and a deeper supported thinking level for architecture or difficult debugging. Prefer **Fast** service tier when Codex latency matters more than cost. Context size is not a quality score. Review provider price/terms rather than relying only on Nerve's cumulative cost display.
 
 ## Next steps
 

@@ -1,16 +1,12 @@
 export * from "./api/projects.api";
 export { default as ConversationsPanelView } from "./components/ConversationsPanelView.svelte";
-export { default as ProjectSwitcher } from "./components/ProjectSwitcher.svelte";
 export {
-  buildProjectSwitcherItems,
   projectActivityIndicator,
-  quickProjectItems,
   summarizeProjectActivity,
 } from "./state/project-switcher";
 export type {
   ProjectActivityIndicator,
   ProjectActivitySummary,
-  ProjectSwitcherItem,
 } from "./state/project-switcher";
 export {
   focusProjectSearch,

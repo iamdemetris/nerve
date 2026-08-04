@@ -42,6 +42,42 @@ describe("WorkbenchExploreAdmission", () => {
     second.finish();
   });
 
+  it("bounds child fan-out across ten independently running parents", async () => {
+    const admission = new WorkbenchExploreAdmission();
+    const batches = Array.from({ length: 10 }, (_, index) =>
+      admission.reserveBatch(`run_${index}`, 1),
+    );
+    const releases = await Promise.all(
+      batches.slice(0, 8).map((batch) => batch.acquire()),
+    );
+    let ninthAdmitted = false;
+    let tenthAdmitted = false;
+    const ninth = batches[8]!.acquire().then((release) => {
+      ninthAdmitted = true;
+      return release;
+    });
+    const tenth = batches[9]!.acquire().then((release) => {
+      tenthAdmitted = true;
+      return release;
+    });
+
+    await tick();
+    assert.equal(ninthAdmitted, false);
+    assert.equal(tenthAdmitted, false);
+
+    releases[0]!();
+    const releaseNinth = await ninth;
+    assert.equal(ninthAdmitted, true);
+    assert.equal(tenthAdmitted, false);
+
+    releases[1]!();
+    const releaseTenth = await tenth;
+    releaseNinth();
+    releaseTenth();
+    for (const release of releases.slice(2)) release();
+    for (const batch of batches) batch.finish();
+  });
+
   it("rejects a batch atomically when the parent run allowance is insufficient", () => {
     const admission = new WorkbenchExploreAdmission();
     admission.reserveBatch("run_parent", 8).finish();

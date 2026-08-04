@@ -34,6 +34,7 @@ const queue = new AgentConfigMutationQueue({
     // Reconcile the composer to the server-clamped values.
     if (agent.model) conversationState.selectedModelKey = modelKey(agent.model);
     conversationState.selectedThinkingLevel = agent.thinkingLevel;
+    conversationState.selectedServiceTier = agent.serviceTier;
     conversationState.selectedMode = agent.mode;
     conversationState.selectedPermissionLevel = agent.permissionLevel;
     conversationState.selectedApprovalPolicy = agent.approvalPolicy;
@@ -48,6 +49,7 @@ const queue = new AgentConfigMutationQueue({
         conversationState.selectedModelKey = modelKey(confirmed.model);
       }
       conversationState.selectedThinkingLevel = confirmed.thinkingLevel;
+      conversationState.selectedServiceTier = confirmed.serviceTier;
       conversationState.selectedMode = confirmed.mode;
       conversationState.selectedPermissionLevel = confirmed.permissionLevel;
       conversationState.selectedApprovalPolicy = confirmed.approvalPolicy;

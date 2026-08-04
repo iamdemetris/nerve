@@ -19,6 +19,7 @@ const releaseSurfaceExtensions =
 
 const allowedNerveDependencies = new Map([
   ["@nervekit/contracts", []],
+  ["@nervekit/acp", []],
   ["@nervekit/protocol", ["@nervekit/contracts"]],
   ["@nervekit/harness", ["@nervekit/contracts"]],
   ["@nervekit/tools", ["@nervekit/contracts"]],
@@ -27,6 +28,7 @@ const allowedNerveDependencies = new Map([
   [
     "@nervekit/workbench-server",
     [
+      "@nervekit/acp",
       "@nervekit/contracts",
       "@nervekit/protocol",
       "@nervekit/harness",
@@ -41,6 +43,7 @@ const allowedNerveDependencies = new Map([
     "@nervekit/desktop-shell",
     ["@nervekit/contracts", "@nervekit/workbench-server"],
   ],
+  ["@nervekit/mac-shell", []],
 ]);
 
 const packageByDirectory = new Map();

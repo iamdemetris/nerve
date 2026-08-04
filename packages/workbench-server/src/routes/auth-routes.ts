@@ -13,9 +13,12 @@ export function createAuthRoutes(state: OrchestratorState): Hono {
 
   app.get("/auth/providers", async (c) =>
     c.json({
-      providers: await state.auth.listProviderMetadata(
-        state.providerCatalog.providerDisplayNames(),
-      ),
+      providers: [
+        ...(await state.auth.listProviderMetadata(
+          state.providerCatalog.providerDisplayNames(),
+        )),
+        ...state.registry.listAcpProviders(),
+      ],
     }),
   );
   app.get("/auth/credential-key", (c) =>

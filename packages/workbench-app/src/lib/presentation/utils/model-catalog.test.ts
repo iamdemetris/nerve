@@ -16,6 +16,7 @@ function model(provider: string, modelId: string, name: string): ModelInfo {
     reasoning: false,
     input: ["text"],
     supportedThinkingLevels: ["off"],
+    supportsServiceTier: false,
     contextWindow: 0,
     maxOutputTokens: 0,
   };

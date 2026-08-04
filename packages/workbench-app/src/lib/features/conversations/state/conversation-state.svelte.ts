@@ -50,6 +50,7 @@ export type PendingConversationState = {
   composerText: string;
   selectedModelKey: string;
   thinkingLevel: AgentRecord["thinkingLevel"];
+  serviceTier: AgentRecord["serviceTier"];
   mode: AgentRecord["mode"];
   permissionLevel: AgentRecord["permissionLevel"];
   approvalPolicy: AgentRecord["approvalPolicy"];
@@ -66,6 +67,7 @@ export const conversationState = $state({
   slashCompletions: [] as CompletionItem[],
   selectedModelKey: "nerve-faux:faux-fast",
   selectedThinkingLevel: "off" as AgentRecord["thinkingLevel"],
+  selectedServiceTier: "default" as AgentRecord["serviceTier"],
   selectedMode: "coding" as AgentRecord["mode"],
   selectedPermissionLevel: "autonomous" as AgentRecord["permissionLevel"],
   selectedApprovalPolicy: {

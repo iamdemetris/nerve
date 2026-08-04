@@ -85,8 +85,18 @@ export function createHarnessStreamFn<
       maxRetryDelayMs: requestOptions.maxRetryDelayMs,
       metadata: requestOptions.metadata,
       env: requestOptions.env,
-      onPayload: async (payload) =>
-        await options.emitBeforeProviderPayload(requestModel, payload),
+      onPayload: async (payload) => {
+        // pi-ai streamSimple does not forward serviceTier; inject into the
+        // request body for OpenAI Responses / Codex Responses Fast mode.
+        const withServiceTier = applyServiceTierToPayload(
+          payload,
+          requestOptions.serviceTier,
+        );
+        return await options.emitBeforeProviderPayload(
+          requestModel,
+          withServiceTier,
+        );
+      },
       onResponse: async (response) => {
         const headers = { ...(response.headers as Record<string, string>) };
         await options.emitAfterProviderResponse(
@@ -103,6 +113,21 @@ export function createHarnessStreamFn<
       apiKey: auth?.apiKey,
     });
   };
+}
+
+/**
+ * Inject OpenAI `service_tier` into a provider payload. No-ops when the
+ * tier is unset/default or the payload is not a plain object.
+ */
+function applyServiceTierToPayload(
+  payload: unknown,
+  serviceTier: AgentHarnessStreamOptions["serviceTier"],
+): unknown {
+  if (!serviceTier || serviceTier === "default") return payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload;
+  }
+  return { ...payload, service_tier: serviceTier };
 }
 
 export interface HarnessTurnExecution<

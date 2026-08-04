@@ -1,5 +1,9 @@
 <script lang="ts">
-import type { ModelInfo, ThinkingLevel } from "@nervekit/contracts";
+import type {
+  ModelInfo,
+  ServiceTier,
+  ThinkingLevel,
+} from "@nervekit/contracts";
 import Popover, {
   PopoverBody,
   PopoverRow,
@@ -19,24 +23,28 @@ type Props = {
   models?: ModelInfo[];
   selectedModelKey?: string;
   thinkingLevel?: ThinkingLevel;
+  serviceTier?: ServiceTier;
   disabled?: boolean;
   shortcutLabel?: string;
   runtimeChangeHint?: string;
   emptyMessage?: string;
   onModelChange?: (value: string) => void;
   onThinkingLevelChange?: (value: ThinkingLevel) => void;
+  onServiceTierChange?: (value: ServiceTier) => void;
 };
 
 let {
   models = [],
   selectedModelKey = "",
   thinkingLevel = "off",
+  serviceTier = "default",
   disabled = false,
   shortcutLabel,
   runtimeChangeHint,
   emptyMessage = "No models available. Configure a provider or adjust Scoped Models in Settings.",
   onModelChange,
   onThinkingLevelChange,
+  onServiceTierChange,
 }: Props = $props();
 
 const SEARCH_THRESHOLD = 10;
@@ -99,18 +107,42 @@ const thinkingLevels = $derived<ThinkingLevel[]>(
 );
 
 const hasThinking = $derived(thinkingLevels.length > 1);
+/** OpenAI Responses / Codex Responses: Standard vs Fast service tier. */
+const hasServiceTier = $derived(Boolean(selectedModel?.supportsServiceTier));
+
+const serviceTierLabel = $derived(
+  serviceTier === "priority" ? "Fast" : "Standard",
+);
 
 const triggerLabel = $derived(
   selectedModel ? contextualModelLabel(selectedModel, models) : "Select model",
 );
+const triggerSuffixParts = $derived.by(() => {
+  const parts: string[] = [];
+  if (hasThinking && thinkingLevel !== "off") {
+    parts.push(thinkingLevelLabel(thinkingLevel));
+  }
+  if (hasServiceTier && serviceTier === "priority") {
+    parts.push(serviceTierLabel);
+  }
+  return parts;
+});
 const triggerSuffix = $derived(
-  hasThinking && thinkingLevel !== "off"
-    ? thinkingLevelLabel(thinkingLevel)
-    : undefined,
+  triggerSuffixParts.length > 0 ? triggerSuffixParts.join(" · ") : undefined,
 );
+const triggerShortSuffixParts = $derived.by(() => {
+  const parts: string[] = [];
+  if (hasThinking && thinkingLevel !== "off") {
+    parts.push(thinkingLevelShortLabel(thinkingLevel));
+  }
+  if (hasServiceTier && serviceTier === "priority") {
+    parts.push("F");
+  }
+  return parts;
+});
 const triggerShortSuffix = $derived(
-  hasThinking && thinkingLevel !== "off"
-    ? thinkingLevelShortLabel(thinkingLevel)
+  triggerShortSuffixParts.length > 0
+    ? triggerShortSuffixParts.join("·")
     : undefined,
 );
 const triggerTitle = $derived(
@@ -134,6 +166,11 @@ function selectModel(model: ModelInfo) {
 function selectThinking(level: ThinkingLevel) {
   if (disabled) return;
   if (level !== thinkingLevel) onThinkingLevelChange?.(level);
+}
+
+function selectServiceTier(tier: ServiceTier) {
+  if (disabled) return;
+  if (tier !== serviceTier) onServiceTierChange?.(tier);
 }
 
 $effect(() => {
@@ -183,7 +220,7 @@ $effect(() => {
                 variant="outline"
                 value={providerFilter}
                 aria-label="Filter by provider"
-                class="flex-nowrap overflow-x-auto"
+                class="w-full min-w-0 flex-nowrap overflow-x-auto overscroll-x-contain"
                 onValueChange={(value) => {
                   if (value) providerFilter = value;
                 }}
@@ -208,7 +245,7 @@ $effect(() => {
               getKey={(entry) => entry.key}
               estimateSize={() => 36}
               gap={6}
-              viewportClass="max-h-[min(44vh,18rem)]"
+              viewportClass="max-h-[min(36vh,14rem)]"
               viewportAriaLabel="Available models"
             >
               {#snippet row({ item: entry })}
@@ -249,6 +286,40 @@ $effect(() => {
               {thinkingLevelLabel(level)}
             </ToggleGroup.Item>
           {/each}
+        </ToggleGroup.Root>
+      </PopoverSection>
+    {/if}
+
+    {#if hasServiceTier}
+      <PopoverSection label="Service tier" separated>
+        <ToggleGroup.Root
+          type="single"
+          size="xs"
+          spacing={1}
+          variant="outline"
+          value={serviceTier}
+          aria-label="Service tier"
+          class="flex-wrap justify-start"
+          onValueChange={(value) => {
+            if (value) selectServiceTier(value as ServiceTier);
+          }}
+        >
+          <ToggleGroup.Item
+            value="default"
+            class="flex-none rounded-full text-xs data-[state=on]:text-primary"
+            title="Standard latency and capacity"
+            {disabled}
+          >
+            Standard
+          </ToggleGroup.Item>
+          <ToggleGroup.Item
+            value="priority"
+            class="flex-none rounded-full text-xs data-[state=on]:text-primary"
+            title="Faster responses via priority service tier (higher cost)"
+            {disabled}
+          >
+            Fast
+          </ToggleGroup.Item>
         </ToggleGroup.Root>
       </PopoverSection>
     {/if}

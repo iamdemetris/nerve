@@ -1,5 +1,8 @@
 import { resolve } from "node:path";
-import { clampAgentThinkingLevel } from "@nervekit/harness";
+import {
+  clampAgentServiceTier,
+  clampAgentThinkingLevel,
+} from "@nervekit/harness";
 import {
   type AgentRecord,
   type CreateAgentRequest,
@@ -28,7 +31,8 @@ function isModeOnlyUpdate(
     request.permissionLevel === undefined &&
     request.approvalPolicy === undefined &&
     request.model === undefined &&
-    request.thinkingLevel === undefined
+    request.thinkingLevel === undefined &&
+    request.serviceTier === undefined
   );
 }
 
@@ -38,7 +42,8 @@ function isRuntimeConfigUpdate(request: UpdateAgentRequest): boolean {
     (request.permissionLevel !== undefined ||
       request.approvalPolicy !== undefined ||
       request.model !== undefined ||
-      request.thinkingLevel !== undefined)
+      request.thinkingLevel !== undefined ||
+      request.serviceTier !== undefined)
   );
 }
 
@@ -91,6 +96,7 @@ export class AgentLifecycleService {
           approvalPolicy: this.storage.settings.defaultApprovalPolicy,
           model: this.storage.settings.defaultModel,
           thinkingLevel: this.storage.settings.defaultThinkingLevel,
+          serviceTier: this.storage.settings.defaultServiceTier,
         };
     const mode = request.mode ?? (parent ? parent.mode : conversation.mode);
     const permissionLevel =
@@ -108,6 +114,9 @@ export class AgentLifecycleService {
     const thinkingLevel = parent
       ? request.thinkingLevel
       : (request.thinkingLevel ?? defaultSelection.thinkingLevel);
+    const serviceTier = parent
+      ? request.serviceTier
+      : (request.serviceTier ?? defaultSelection.serviceTier);
     const workerId = this.workers.requireWorker(
       request.workerId ?? parent?.workerId,
       "agent",
@@ -136,6 +145,7 @@ export class AgentLifecycleService {
       budget: agentBudget(parent, request.budget),
       model,
       thinkingLevel: clampAgentThinkingLevel(model, thinkingLevel),
+      serviceTier: clampAgentServiceTier(model, serviceTier),
       status: "idle",
       createdAt: now,
       updatedAt: now,
@@ -215,6 +225,10 @@ export class AgentLifecycleService {
             model,
             request.thinkingLevel ?? agent.thinkingLevel,
           ),
+          serviceTier: clampAgentServiceTier(
+            model,
+            request.serviceTier ?? agent.serviceTier,
+          ),
           updatedAt: new Date().toISOString(),
         };
         await this.updateAgent(updated);
@@ -243,6 +257,10 @@ export class AgentLifecycleService {
       thinkingLevel: clampAgentThinkingLevel(
         model,
         request.thinkingLevel ?? agent.thinkingLevel,
+      ),
+      serviceTier: clampAgentServiceTier(
+        model,
+        request.serviceTier ?? agent.serviceTier,
       ),
       updatedAt: new Date().toISOString(),
     };

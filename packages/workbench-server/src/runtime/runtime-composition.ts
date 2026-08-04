@@ -9,6 +9,9 @@ import {
   WorkbenchAgentMechanics,
   MessageMirror,
 } from "../domains/agents/run/index.js";
+import { AcpDispatchingExecutionAdapter } from "../domains/acp/acp-execution-adapter.js";
+import { AcpModelCatalog } from "../domains/acp/acp-model-catalog.js";
+import { AcpSessionStore } from "../domains/acp/acp-session-store.js";
 import type { AgentBrowserSkillCatalog } from "../domains/agents/prompting/agent-browser-skills.js";
 import { SubagentTranscriptService } from "../domains/agents/subagent-transcript.service.js";
 import { SubagentTranscriptLiveService } from "../domains/agents/subagent-transcript-live.service.js";
@@ -119,6 +122,7 @@ export interface RuntimeServices {
   subagentTranscripts: SubagentTranscriptService;
   humanInput: HumanInputResolutionService;
   pruneConversations: PruneProjectConversationsService;
+  acpModels: AcpModelCatalog;
 }
 
 export function composeRuntime(
@@ -130,6 +134,13 @@ export function composeRuntime(
   const services = {} as RuntimeServices;
   const subagentExecutions = new WorkbenchSubagentExecutions();
   const exploreAdmission = new WorkbenchExploreAdmission();
+  const acpLogger = logger.child({ component: "acp" });
+  const acpLog = (message: string, error?: unknown) => {
+    if (error) acpLogger.warn(message, { error: String(error) });
+    else acpLogger.info(message);
+  };
+  services.acpModels = new AcpModelCatalog(storage.paths.home, acpLog);
+  const acpSessions = new AcpSessionStore(storage.paths.home);
 
   const getProject = (projectId: string) =>
     services.projectLifecycle.getProject(projectId);
@@ -476,7 +487,18 @@ export function composeRuntime(
     subagentExecutions,
     exploreAdmission,
     execution: (references) =>
-      new WorkbenchAgentExecutionAdapter(services.agentMechanics, references),
+      new AcpDispatchingExecutionAdapter(
+        new WorkbenchAgentExecutionAdapter(services.agentMechanics, references),
+        services.acpModels,
+        {
+          getAgent,
+          loadSessionId: (conversationId) => acpSessions.get(conversationId),
+          saveSessionId: (conversationId, sessionId) =>
+            acpSessions.set(conversationId, sessionId),
+          appendEntry,
+          log: acpLog,
+        },
+      ),
     retryPolicy: {
       get enabled() {
         return storage.settings.retry.enabled;

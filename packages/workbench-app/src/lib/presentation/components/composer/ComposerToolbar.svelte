@@ -9,6 +9,7 @@ import type {
   ContextUsage,
   ModelInfo,
   PermissionLevel,
+  ServiceTier,
   ThinkingLevel,
   TodoItem,
 } from "@nervekit/contracts";
@@ -57,10 +58,12 @@ type Props = {
   models: ModelInfo[];
   selectedModelKey: string;
   thinkingLevel: ThinkingLevel;
+  serviceTier?: ServiceTier;
   runtimeChangeHint?: string;
   modelEmptyMessage?: string;
   onModelChange?: (value: string) => void;
   onThinkingLevelChange?: (value: ThinkingLevel) => void;
+  onServiceTierChange?: (value: ServiceTier) => void;
   onCompact?: () => void;
   onPermissionChange?: (value: PermissionLevel) => void;
   onApprovalPolicyChange?: (value: ApprovalPolicy) => void;
@@ -88,10 +91,12 @@ let {
   models,
   selectedModelKey,
   thinkingLevel,
+  serviceTier = "default",
   runtimeChangeHint,
   modelEmptyMessage,
   onModelChange,
   onThinkingLevelChange,
+  onServiceTierChange,
   onCompact,
   onPermissionChange,
   onApprovalPolicyChange,
@@ -229,9 +234,11 @@ function setAutoApproveReadOnly(autoApproveReadOnly: boolean) {
     {models}
     {selectedModelKey}
     {thinkingLevel}
+    {serviceTier}
     disabled={modelDisabled}
     {onModelChange}
     {onThinkingLevelChange}
+    {onServiceTierChange}
     {runtimeChangeHint}
     emptyMessage={modelEmptyMessage}
     shortcutLabel={thinkingShortcut}

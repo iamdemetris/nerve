@@ -3,6 +3,7 @@ import ChevronDown from "@lucide/svelte/icons/chevron-down";
 import ChevronRight from "@lucide/svelte/icons/chevron-right";
 import Folder from "@lucide/svelte/icons/folder";
 import FolderOpen from "@lucide/svelte/icons/folder-open";
+import type { ContextMenuItem } from "@nervekit/ui-kit/components/ui/context-menu-list";
 import { cn } from "@nervekit/ui-kit/core/utils";
 import { tick, type Snippet } from "svelte";
 import { SvelteSet } from "svelte/reactivity";
@@ -41,6 +42,12 @@ type Props = {
    */
   indentItems?: boolean;
   getItemSelected?: (item: T) => boolean;
+  getItemMenuItems?: (item: T) => ContextMenuItem[];
+  getItemDisabled?: (item: T) => boolean;
+  getItemClass?: (item: T) => string | undefined;
+  getItemLabelClass?: (item: T) => string | undefined;
+  /** Controls the first disclosure state seen for an expandable item. */
+  getItemInitiallyExpanded?: (item: T) => boolean;
   itemMono?: boolean;
   /** Renders item descriptions on a second line instead of inline. */
   itemStacked?: boolean;
@@ -54,6 +61,9 @@ type Props = {
   itemLabelTrailing?: Snippet<[T]>;
   itemBadges?: Snippet<[T]>;
   itemActions?: Snippet<[T]>;
+  alwaysShowItemActions?: boolean;
+  itemDense?: boolean;
+  reserveLeafDisclosureSpace?: boolean;
   class?: string;
 };
 
@@ -69,6 +79,11 @@ let {
   itemClass,
   indentItems = true,
   getItemSelected,
+  getItemMenuItems,
+  getItemDisabled,
+  getItemClass,
+  getItemLabelClass,
+  getItemInitiallyExpanded,
   itemMono = false,
   itemStacked = false,
   onItemActivate,
@@ -76,11 +91,15 @@ let {
   itemLabelTrailing,
   itemBadges,
   itemActions,
+  alwaysShowItemActions = true,
+  itemDense = true,
+  reserveLeafDisclosureSpace = true,
   class: className,
 }: Props = $props();
 
 let root: HTMLElement | undefined = $state();
 const collapsed = new SvelteSet<string>();
+const initializedExpansion = new SvelteSet<string>();
 let focusedId = $state<string>();
 
 const expandableIds = $derived(panelTreeExpandableIds(nodes));
@@ -110,6 +129,23 @@ $effect(() => {
 });
 
 $effect(() => {
+  const visit = (node: PanelTreeNode<T>): void => {
+    if (node.children.length > 0 && !initializedExpansion.has(node.id)) {
+      initializedExpansion.add(node.id);
+      if (
+        node.kind === "item" &&
+        getItemInitiallyExpanded &&
+        !getItemInitiallyExpanded(node.value)
+      ) {
+        collapsed.add(node.id);
+      }
+    }
+    node.children.forEach(visit);
+  };
+  nodes.forEach(visit);
+});
+
+$effect(() => {
   const visibleIds = new Set(rows.map((row) => row.node.id));
   if (!focusedId || !visibleIds.has(focusedId)) focusedId = rows[0]?.node.id;
 });
@@ -128,7 +164,10 @@ function toggle(node: PanelTreeNode<T>): void {
 }
 
 function activate(node: PanelTreeNode<T>): void {
-  if (node.kind === "item") onItemActivate?.(node.value);
+  if (node.kind === "item") {
+    if (getItemDisabled?.(node.value)) return;
+    onItemActivate?.(node.value);
+  }
   toggle(node);
 }
 
@@ -245,7 +284,7 @@ function handleKeydown(event: KeyboardEvent, node: PanelTreeNode<T>): void {
           {:else}
             <ChevronRight class="size-3" aria-hidden="true" />
           {/if}
-        {:else if hasExpandableItems}
+        {:else if reserveLeafDisclosureSpace && hasExpandableItems}
           <span class="size-3" aria-hidden="true"></span>
         {/if}
         {#if itemLeading}{@render itemLeading(node.value)}{/if}
@@ -266,17 +305,22 @@ function handleKeydown(event: KeyboardEvent, node: PanelTreeNode<T>): void {
         metaMono={itemMetaMono}
         title={getItemTitle?.(node.value)}
         selected={getItemSelected?.(node.value) ?? false}
+        disabled={getItemDisabled?.(node.value) ?? false}
         mono={itemMono}
         stacked={itemStacked}
-        leading={itemLeading || expandable || hasExpandableItems
+        leading={itemLeading ||
+        expandable ||
+        (reserveLeafDisclosureSpace && hasExpandableItems)
           ? leafLeading
           : undefined}
         labelTrailing={itemLabelTrailing ? leafLabelTrailing : undefined}
         badges={itemBadges ? leafBadges : undefined}
         actions={itemActions ? leafActions : undefined}
-        dense
-        alwaysShowActions
-        class={cn(cardClass(rowIndex), itemClass)}
+        menuItems={getItemMenuItems?.(node.value)}
+        dense={itemDense}
+        alwaysShowActions={alwaysShowItemActions}
+        labelClass={getItemLabelClass?.(node.value)}
+        class={cn(cardClass(rowIndex), itemClass, getItemClass?.(node.value))}
         indent={baseIndent + (indentItems ? row.depth : 0)}
         role="treeitem"
         tabindex={focusedId === node.id ? 0 : -1}

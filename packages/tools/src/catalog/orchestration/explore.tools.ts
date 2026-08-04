@@ -1,5 +1,6 @@
 import { Type } from "typebox";
 import {
+  EXPLORE_MAX_ACTIVE_CHILDREN_GLOBAL,
   EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN,
   EXPLORE_MAX_CHILDREN_PER_RUN,
   EXPLORE_MAX_TASKS_PER_CALL,
@@ -55,13 +56,13 @@ export const exploreToolDefinitions = [
     traits: ["long_running"],
     executionKind: "host",
     label: "explore",
-    description: `Delegate substantial read-only codebase investigations to child agents after your own quick lookup. Pass one required tasks array: one item launches one child; 2–${EXPLORE_MAX_TASKS_PER_CALL} independent items require split_rationale. Concurrent Explore calls share ${EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN} active slots and ${EXPLORE_MAX_CHILDREN_PER_RUN} child launches per parent run. Each task may include focused context.`,
+    description: `Delegate substantial read-only codebase investigations to child agents after your own quick lookup. Pass one required tasks array: one item launches one child; 2–${EXPLORE_MAX_TASKS_PER_CALL} independent items require split_rationale. Concurrent Explore calls share ${EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN} active slots per parent run, ${EXPLORE_MAX_ACTIVE_CHILDREN_GLOBAL} across the workbench, and ${EXPLORE_MAX_CHILDREN_PER_RUN} child launches per parent run. Each task may include focused context.`,
     promptSnippet:
       "Delegate substantial, independent codebase investigations to read-only child agents after doing an initial lookup",
     promptGuidelines: [
       "Use explore only after a quick lookup, and only for substantial codebase investigations.",
       `Pass 1–${EXPLORE_MAX_TASKS_PER_CALL} items in tasks. For 2–${EXPLORE_MAX_TASKS_PER_CALL} independent tasks, explain the split in split_rationale.`,
-      `Concurrent calls share ${EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN} active children and at most ${EXPLORE_MAX_CHILDREN_PER_RUN} child launches in one parent run.`,
+      `Concurrent calls share ${EXPLORE_MAX_ACTIVE_CHILDREN_PER_RUN} active children per parent run, ${EXPLORE_MAX_ACTIVE_CHILDREN_GLOBAL} across the workbench, and at most ${EXPLORE_MAX_CHILDREN_PER_RUN} child launches in one parent run.`,
     ],
     parameters: exploreParameters,
     executionMode: "parallel",

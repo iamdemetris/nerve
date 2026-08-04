@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { applicationLogLevelSchema } from "../logs/index.js";
-import { modelSelectionSchema, thinkingLevelSchema } from "../models/index.js";
+import {
+  modelSelectionSchema,
+  serviceTierSchema,
+  thinkingLevelSchema,
+} from "../models/index.js";
 import { userConfigurableToolNameSchema } from "../tools/index.js";
 
 export const modeSchema = z.enum(["planning", "coding"]);
@@ -36,6 +40,7 @@ export const agentSelectionSettingsSchema = z.object({
   approvalPolicy: approvalPolicySchema.default(defaultApprovalPolicy),
   model: modelSelectionSchema.optional(),
   thinkingLevel: thinkingLevelSchema.default("off"),
+  serviceTier: serviceTierSchema.default("default"),
 });
 export type AgentSelectionSettings = z.infer<
   typeof agentSelectionSettingsSchema
@@ -146,16 +151,19 @@ export const settingsSchema = z.object({
   defaultApprovalPolicy: approvalPolicySchema.default(defaultApprovalPolicy),
   defaultModel: modelSelectionSchema.optional(),
   defaultThinkingLevel: thinkingLevelSchema.default("off"),
+  defaultServiceTier: serviceTierSchema.default("default"),
   rememberLastAgentSelection: z.boolean().default(false),
   lastAgentSelection: agentSelectionSettingsSchema.default({
     mode: "coding",
     permissionLevel: "autonomous",
     approvalPolicy: defaultApprovalPolicy,
     thinkingLevel: "off",
+    serviceTier: "default",
   }),
   exploreAgent: z.object({
     model: modelSelectionSchema.optional(),
     thinkingLevel: thinkingLevelSchema.default("off"),
+    serviceTier: serviceTierSchema.default("default"),
   }),
   server: z.object({
     host: z.string().default("127.0.0.1"),
@@ -221,15 +229,18 @@ export const defaultSettings: Settings = {
   defaultPermissionLevel: "autonomous",
   defaultApprovalPolicy,
   defaultThinkingLevel: "off",
+  defaultServiceTier: "default",
   rememberLastAgentSelection: false,
   lastAgentSelection: {
     mode: "coding",
     permissionLevel: "autonomous",
     approvalPolicy: defaultApprovalPolicy,
     thinkingLevel: "off",
+    serviceTier: "default",
   },
   exploreAgent: {
     thinkingLevel: "off",
+    serviceTier: "default",
   },
   server: {
     host: "127.0.0.1",
@@ -282,6 +293,7 @@ export const updateSettingsRequestSchema = z.object({
   defaultApprovalPolicy: approvalPolicyPatchSchema.optional(),
   defaultModel: modelSelectionSchema.nullable().optional(),
   defaultThinkingLevel: thinkingLevelSchema.optional(),
+  defaultServiceTier: serviceTierSchema.optional(),
   rememberLastAgentSelection: z.boolean().optional(),
   lastAgentSelection: z
     .object({
@@ -290,12 +302,14 @@ export const updateSettingsRequestSchema = z.object({
       approvalPolicy: approvalPolicyPatchSchema.optional(),
       model: modelSelectionSchema.nullable().optional(),
       thinkingLevel: thinkingLevelSchema.optional(),
+      serviceTier: serviceTierSchema.optional(),
     })
     .optional(),
   exploreAgent: z
     .object({
       model: modelSelectionSchema.nullable().optional(),
       thinkingLevel: thinkingLevelSchema.optional(),
+      serviceTier: serviceTierSchema.optional(),
     })
     .optional(),
   server: z

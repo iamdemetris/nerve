@@ -135,6 +135,7 @@ function onRememberLastSelectionChange(checked: boolean): void {
     approvalPolicy: conversationState.selectedApprovalPolicy,
     ...(model ? { model } : {}),
     thinkingLevel: conversationState.selectedThinkingLevel,
+    serviceTier: conversationState.selectedServiceTier,
   } satisfies Settings["lastAgentSelection"];
   settingsDraft.lastAgentSelection = lastAgentSelection;
   onSettingsChange?.(

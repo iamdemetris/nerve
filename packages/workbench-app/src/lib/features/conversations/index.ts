@@ -12,6 +12,7 @@ export {
   setComposerApprovalPolicy,
   setComposerMode,
   setComposerPermission,
+  setComposerServiceTier,
   setComposerThinkingLevel,
 } from "./state/composer-config.svelte";
 export {

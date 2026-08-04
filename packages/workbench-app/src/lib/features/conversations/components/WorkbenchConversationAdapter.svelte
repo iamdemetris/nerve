@@ -2,9 +2,9 @@
 import { untrack } from "svelte";
 import { writeClipboardText } from "$lib/core/clipboard";
 import { notify } from "$lib/features/notifications/notify.svelte";
-import { getDesktopBridge } from "$lib/features/desktop/state/desktop-bridge.svelte";
 import type { WorkbenchConversationAdapterProps } from "./workbench-conversation-adapter-props";
 import { shortProjectLabel } from "$lib/core/utils/project-tree";
+import { modelKey, supportsImageInput } from "$lib/presentation/utils/model";
 import {
   activeRunStreamingText,
   buildActiveRunTimeline,
@@ -57,6 +57,7 @@ let {
   composerEscapeToken = 0,
   micShortcutToken = 0,
   thinkingLevel = "off",
+  serviceTier = "default",
   mode = "coding",
   permissionLevel = "autonomous",
   approvalPolicy = { autoApproveReadOnly: true },
@@ -75,6 +76,7 @@ let {
   onOpenFile,
   onModelChange,
   onThinkingLevelChange,
+  onServiceTierChange,
   onModeChange,
   onPermissionChange,
   onApprovalPolicyChange,
@@ -182,6 +184,10 @@ const treeEntriesById = $derived(
 const hasActiveTurnOutput = $derived(
   hasActiveTurnTimelineOutput(combinedTimeline, rendered.activeRun),
 );
+const selectedModelInfo = $derived(
+  models.find((model) => modelKey(model) === selectedModelKey),
+);
+const imageInputSupported = $derived(supportsImageInput(selectedModelInfo));
 
 async function copyText(text: string, label = "message") {
   try {
@@ -244,6 +250,7 @@ function menuForTranscript(
       models,
       selectedModelKey,
       thinkingLevel,
+      serviceTier,
       mode,
       permissionLevel,
       approvalPolicy,
@@ -251,8 +258,9 @@ function menuForTranscript(
       contextWindow,
       capabilities: {
         voice: true,
-        imagePaste: true,
-        fileDrop: Boolean(getDesktopBridge()?.files),
+        imagePaste: imageInputSupported,
+        // Drop is always offered; the composer adapter partitions image vs path handling.
+        fileDrop: true,
         completions: true,
         suggestions: true,
         shortcuts: true,
@@ -300,6 +308,7 @@ function menuForTranscript(
       {composerEscapeToken}
       {micShortcutToken}
       {thinkingLevel}
+      {serviceTier}
       {mode}
       {permissionLevel}
       {approvalPolicy}
@@ -314,6 +323,7 @@ function menuForTranscript(
       onCompact={activeConversation ? onCompact : undefined}
       {onModelChange}
       {onThinkingLevelChange}
+      {onServiceTierChange}
       {onModeChange}
       {onPermissionChange}
       {onApprovalPolicyChange}

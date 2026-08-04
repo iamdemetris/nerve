@@ -1,6 +1,5 @@
 import { SvelteSet } from "svelte/reactivity";
 import { projectKey } from "$lib/core/utils/project-tree";
-import { buildProjectSwitcherItems } from "$lib/features/projects/state/project-switcher";
 import { agentRunningTone } from "@nervekit/ui-kit/core/utils/status";
 import {
   conversationViewKey,
@@ -136,15 +135,6 @@ export const workspaceSelectors = {
     return workspaceState.conversations.filter((conversation) =>
       ids.has(conversation.projectId),
     );
-  },
-  get projectSwitcherItems() {
-    return buildProjectSwitcherItems({
-      projects: workspaceState.projects,
-      conversations: workspaceState.conversations,
-      activityById: this.conversationActivityById,
-      homeDir: workspaceState.status?.storage.userHome,
-      recency: workspaceState.projectRecency,
-    });
   },
   get activeConversation() {
     return workspaceState.conversations.find(

@@ -165,6 +165,15 @@ export function resolveAgentModel(
   return resolveAgentModelInternal(selection, true, customModels);
 }
 
+/** OpenAI Responses-family APIs accept `service_tier` (Standard / Fast). */
+export function modelSupportsServiceTiers(model: Model<string>): boolean {
+  return (
+    model.api === "openai-codex-responses" ||
+    model.api === "openai-responses" ||
+    model.api === "azure-openai-responses"
+  );
+}
+
 export function getAgentModelInfo(model: Model<string>): AgentModelInfo {
   return {
     provider: model.provider,
@@ -174,10 +183,26 @@ export function getAgentModelInfo(model: Model<string>): AgentModelInfo {
     supportedThinkingLevels: getSupportedThinkingLevels(
       model,
     ) as ThinkingLevel[],
+    supportsServiceTier: modelSupportsServiceTiers(model),
     input: (model.input ?? ["text"]) as ("text" | "image")[],
     contextWindow: model.contextWindow ?? 0,
     maxOutputTokens: model.maxTokens ?? 0,
   };
+}
+
+/**
+ * Clamp a requested service tier for the resolved model. Unsupported models
+ * always resolve to `"default"` so Fast is never silently sent to APIs that
+ * ignore or reject it.
+ */
+export function clampAgentServiceTier(
+  selection: AgentModelSelection | undefined,
+  requested: "default" | "priority" | undefined,
+  customModels?: AgentCustomModel[],
+): "default" | "priority" {
+  if (requested !== "priority") return "default";
+  const model = resolveAgentModelInternal(selection, false, customModels);
+  return modelSupportsServiceTiers(model) ? "priority" : "default";
 }
 
 /** Resolve the context window for a model selection (0 when unknown). */
