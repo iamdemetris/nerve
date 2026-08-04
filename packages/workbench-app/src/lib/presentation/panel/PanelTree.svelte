@@ -4,6 +4,10 @@ import ChevronRight from "@lucide/svelte/icons/chevron-right";
 import Folder from "@lucide/svelte/icons/folder";
 import FolderOpen from "@lucide/svelte/icons/folder-open";
 import type { ContextMenuItem } from "@nervekit/ui-kit/components/ui/context-menu-list";
+import {
+  VirtualScroller,
+  type VirtualScrollerController,
+} from "@nervekit/ui-kit/components/ui/virtual-list";
 import { cn } from "@nervekit/ui-kit/core/utils";
 import { tick, type Snippet } from "svelte";
 import { SvelteSet } from "svelte/reactivity";
@@ -16,6 +20,7 @@ import {
   parentPanelTreeRowId,
   visiblePanelTreeRows,
   type PanelTreeNode,
+  type PanelTreeRow,
 } from "./panel-tree.js";
 
 type Props = {
@@ -48,6 +53,13 @@ type Props = {
   getItemLabelClass?: (item: T) => string | undefined;
   /** Controls the first disclosure state seen for an expandable item. */
   getItemInitiallyExpanded?: (item: T) => boolean;
+  /** Controlled expansion state. Node ids are the ids produced by the builders. */
+  expandedIds?: ReadonlySet<string>;
+  /** Uncontrolled initial expansion policy. Existing callers default to all. */
+  defaultExpanded?: "all" | "none";
+  onItemExpansionChange?: (item: T, expanded: boolean) => void;
+  /** Opt into a single fixed-height virtualized viewport for large trees. */
+  virtualized?: boolean;
   itemMono?: boolean;
   /** Renders item descriptions on a second line instead of inline. */
   itemStacked?: boolean;
@@ -84,6 +96,10 @@ let {
   getItemClass,
   getItemLabelClass,
   getItemInitiallyExpanded,
+  expandedIds,
+  defaultExpanded = "all",
+  onItemExpansionChange,
+  virtualized = false,
   itemMono = false,
   itemStacked = false,
   onItemActivate,
@@ -98,16 +114,24 @@ let {
 }: Props = $props();
 
 let root: HTMLElement | undefined = $state();
+let virtualController = $state<VirtualScrollerController>();
 const collapsed = new SvelteSet<string>();
 const initializedExpansion = new SvelteSet<string>();
+const locallyExpanded = new SvelteSet<string>();
 let focusedId = $state<string>();
 
 const expandableIds = $derived(panelTreeExpandableIds(nodes));
-const expanded = $derived(expandedPanelTreeIds(expandableIds, collapsed));
+const expanded = $derived.by(() => {
+  if (expandedIds)
+    return new Set([...expandedIds].filter((id) => expandableIds.has(id)));
+  if (getItemInitiallyExpanded || defaultExpanded === "all")
+    return expandedPanelTreeIds(expandableIds, collapsed);
+  return new Set([...locallyExpanded].filter((id) => expandableIds.has(id)));
+});
 const rows = $derived(visiblePanelTreeRows(nodes, expanded));
 /** Reserve the chevron column so leaf rows align with expandable siblings. */
 const hasExpandableItems = $derived(
-  rows.some((row) => row.node.kind === "item" && row.node.children.length > 0),
+  rows.some((row) => row.node.kind === "item" && isExpandable(row.node)),
 );
 
 /** Card grouping: a root row opens a surface that its descendants continue. */
@@ -126,11 +150,13 @@ function cardClass(index: number): string | undefined {
 
 $effect(() => {
   for (const id of collapsed) if (!expandableIds.has(id)) collapsed.delete(id);
+  for (const id of locallyExpanded)
+    if (!expandableIds.has(id)) locallyExpanded.delete(id);
 });
 
 $effect(() => {
   const visit = (node: PanelTreeNode<T>): void => {
-    if (node.children.length > 0 && !initializedExpansion.has(node.id)) {
+    if (isExpandable(node) && !initializedExpansion.has(node.id)) {
       initializedExpansion.add(node.id);
       if (
         node.kind === "item" &&
@@ -150,17 +176,28 @@ $effect(() => {
   if (!focusedId || !visibleIds.has(focusedId)) focusedId = rows[0]?.node.id;
 });
 
-function setExpanded(id: string, open: boolean): void {
-  if (open) collapsed.delete(id);
-  else collapsed.add(id);
+function setExpanded(node: PanelTreeNode<T>, open: boolean): void {
+  if (expandedIds) {
+    if (node.kind === "item") onItemExpansionChange?.(node.value, open);
+    return;
+  }
+  if (getItemInitiallyExpanded || defaultExpanded === "all") {
+    if (open) collapsed.delete(node.id);
+    else collapsed.add(node.id);
+  } else if (open) locallyExpanded.add(node.id);
+  else locallyExpanded.delete(node.id);
+  if (node.kind === "item") onItemExpansionChange?.(node.value, open);
 }
 
 function isExpandable(node: PanelTreeNode<T>): boolean {
-  return node.children.length > 0;
+  return (
+    node.children.length > 0 ||
+    (node.kind === "item" && node.expandable === true)
+  );
 }
 
 function toggle(node: PanelTreeNode<T>): void {
-  if (isExpandable(node)) setExpanded(node.id, !expanded.has(node.id));
+  if (isExpandable(node)) setExpanded(node, !expanded.has(node.id));
 }
 
 function activate(node: PanelTreeNode<T>): void {
@@ -174,7 +211,12 @@ function activate(node: PanelTreeNode<T>): void {
 async function focusRow(id: string | undefined): Promise<void> {
   if (!id) return;
   focusedId = id;
+  if (virtualized) {
+    const index = rows.findIndex((row) => row.node.id === id);
+    if (index >= 0) virtualController?.scrollToIndex(index, { align: "auto" });
+  }
   await tick();
+  if (virtualized) await tick();
   const element = [
     ...(root?.querySelectorAll<HTMLElement>("[data-panel-row-id]") ?? []),
   ].find((candidate) => candidate.dataset.panelRowId === id);
@@ -209,7 +251,7 @@ function handleKeydown(event: KeyboardEvent, node: PanelTreeNode<T>): void {
       break;
     case "ArrowRight":
       if (isExpandable(node) && !expanded.has(node.id)) {
-        setExpanded(node.id, true);
+        setExpanded(node, true);
         destination = node.id;
       } else if (isExpandable(node)) {
         destination = firstPanelTreeChildId(rows, node.id) ?? node.id;
@@ -217,7 +259,7 @@ function handleKeydown(event: KeyboardEvent, node: PanelTreeNode<T>): void {
       break;
     case "ArrowLeft":
       if (isExpandable(node) && expanded.has(node.id)) {
-        setExpanded(node.id, false);
+        setExpanded(node, false);
         destination = node.id;
       } else {
         destination = parentPanelTreeRowId(rows, node.id) ?? node.id;
@@ -238,102 +280,124 @@ function handleKeydown(event: KeyboardEvent, node: PanelTreeNode<T>): void {
 }
 </script>
 
+{#snippet renderRow(row: PanelTreeRow<T>, rowIndex: number)}
+  {@const node = row.node}
+  {@const expandable = isExpandable(node)}
+  {@const open = expandable && expanded.has(node.id)}
+  {#if node.kind === "group"}
+    {#snippet groupLeading()}
+      {#if open}
+        <ChevronDown class="size-3" aria-hidden="true" />
+        <FolderOpen class="size-3.5" aria-hidden="true" />
+      {:else}
+        <ChevronRight class="size-3" aria-hidden="true" />
+        <Folder class="size-3.5" aria-hidden="true" />
+      {/if}
+    {/snippet}
+    <PanelRow
+      label={node.label}
+      title={node.path.join("/")}
+      leading={groupLeading}
+      dense
+      indent={baseIndent + row.depth}
+      role="treeitem"
+      tabindex={focusedId === node.id ? 0 : -1}
+      contentTabindex={-1}
+      ariaExpanded={open}
+      ariaLevel={row.depth + 1}
+      ariaPosInSet={row.posInSet}
+      ariaSetSize={row.setSize}
+      dataId={node.id}
+      onfocus={() => (focusedId = node.id)}
+      onkeydown={(event) => handleKeydown(event, node)}
+      onclick={(event) => activateFromPointer(event, node)}
+    />
+  {:else}
+    {#snippet leafLeading()}
+      {#if expandable}
+        {#if open}
+          <ChevronDown class="size-3" aria-hidden="true" />
+        {:else}
+          <ChevronRight class="size-3" aria-hidden="true" />
+        {/if}
+      {:else if reserveLeafDisclosureSpace && hasExpandableItems}
+        <span class="size-3" aria-hidden="true"></span>
+      {/if}
+      {#if itemLeading}{@render itemLeading(node.value)}{/if}
+    {/snippet}
+    {#snippet leafLabelTrailing()}
+      {#if itemLabelTrailing}{@render itemLabelTrailing(node.value)}{/if}
+    {/snippet}
+    {#snippet leafBadges()}
+      {#if itemBadges}{@render itemBadges(node.value)}{/if}
+    {/snippet}
+    {#snippet leafActions()}
+      {#if itemActions}{@render itemActions(node.value)}{/if}
+    {/snippet}
+    <PanelRow
+      label={node.label}
+      description={getItemDescription?.(node.value)}
+      meta={getItemMeta?.(node.value)}
+      metaMono={itemMetaMono}
+      title={getItemTitle?.(node.value)}
+      selected={getItemSelected?.(node.value) ?? false}
+      disabled={getItemDisabled?.(node.value) ?? false}
+      mono={itemMono}
+      stacked={itemStacked}
+      leading={itemLeading ||
+      expandable ||
+      (reserveLeafDisclosureSpace && hasExpandableItems)
+        ? leafLeading
+        : undefined}
+      labelTrailing={itemLabelTrailing ? leafLabelTrailing : undefined}
+      badges={itemBadges ? leafBadges : undefined}
+      actions={itemActions ? leafActions : undefined}
+      menuItems={getItemMenuItems?.(node.value)}
+      dense={itemDense}
+      alwaysShowActions={alwaysShowItemActions}
+      labelClass={getItemLabelClass?.(node.value)}
+      class={cn(cardClass(rowIndex), itemClass, getItemClass?.(node.value))}
+      indent={baseIndent + (indentItems ? row.depth : 0)}
+      role="treeitem"
+      tabindex={focusedId === node.id ? 0 : -1}
+      contentTabindex={-1}
+      ariaExpanded={expandable ? open : undefined}
+      ariaLevel={row.depth + 1}
+      ariaPosInSet={row.posInSet}
+      ariaSetSize={row.setSize}
+      dataId={node.id}
+      onfocus={() => (focusedId = node.id)}
+      onkeydown={(event) => handleKeydown(event, node)}
+      onclick={(event) => activateFromPointer(event, node)}
+    />
+  {/if}
+{/snippet}
+
 <div
   bind:this={root}
   role="tree"
   aria-label={ariaLabel}
-  class={cn("flex min-w-0 flex-col", className)}
+  class={cn(
+    "flex min-w-0 flex-col",
+    virtualized && "min-h-0 flex-1",
+    className,
+  )}
 >
-  {#each rows as row, rowIndex (row.node.id)}
-    {@const node = row.node}
-    {@const expandable = node.children.length > 0}
-    {@const open = expandable && expanded.has(node.id)}
-    {#if node.kind === "group"}
-      {#snippet groupLeading()}
-        {#if open}
-          <ChevronDown class="size-3" aria-hidden="true" />
-          <FolderOpen class="size-3.5" aria-hidden="true" />
-        {:else}
-          <ChevronRight class="size-3" aria-hidden="true" />
-          <Folder class="size-3.5" aria-hidden="true" />
-        {/if}
+  {#if virtualized}
+    <VirtualScroller
+      items={rows}
+      getKey={(row) => row.node.id}
+      estimateSize={() => 20}
+      bind:controller={virtualController}
+      viewportClass="h-full"
+    >
+      {#snippet row({ item, index })}
+        {@render renderRow(item, index)}
       {/snippet}
-      <PanelRow
-        label={node.label}
-        title={node.path.join("/")}
-        leading={groupLeading}
-        dense
-        indent={baseIndent + row.depth}
-        role="treeitem"
-        tabindex={focusedId === node.id ? 0 : -1}
-        contentTabindex={-1}
-        ariaExpanded={open}
-        ariaLevel={row.depth + 1}
-        ariaPosInSet={row.posInSet}
-        ariaSetSize={row.setSize}
-        dataId={node.id}
-        onfocus={() => (focusedId = node.id)}
-        onkeydown={(event) => handleKeydown(event, node)}
-        onclick={(event) => activateFromPointer(event, node)}
-      />
-    {:else}
-      {#snippet leafLeading()}
-        {#if expandable}
-          {#if open}
-            <ChevronDown class="size-3" aria-hidden="true" />
-          {:else}
-            <ChevronRight class="size-3" aria-hidden="true" />
-          {/if}
-        {:else if reserveLeafDisclosureSpace && hasExpandableItems}
-          <span class="size-3" aria-hidden="true"></span>
-        {/if}
-        {#if itemLeading}{@render itemLeading(node.value)}{/if}
-      {/snippet}
-      {#snippet leafLabelTrailing()}
-        {#if itemLabelTrailing}{@render itemLabelTrailing(node.value)}{/if}
-      {/snippet}
-      {#snippet leafBadges()}
-        {#if itemBadges}{@render itemBadges(node.value)}{/if}
-      {/snippet}
-      {#snippet leafActions()}
-        {#if itemActions}{@render itemActions(node.value)}{/if}
-      {/snippet}
-      <PanelRow
-        label={node.label}
-        description={getItemDescription?.(node.value)}
-        meta={getItemMeta?.(node.value)}
-        metaMono={itemMetaMono}
-        title={getItemTitle?.(node.value)}
-        selected={getItemSelected?.(node.value) ?? false}
-        disabled={getItemDisabled?.(node.value) ?? false}
-        mono={itemMono}
-        stacked={itemStacked}
-        leading={itemLeading ||
-        expandable ||
-        (reserveLeafDisclosureSpace && hasExpandableItems)
-          ? leafLeading
-          : undefined}
-        labelTrailing={itemLabelTrailing ? leafLabelTrailing : undefined}
-        badges={itemBadges ? leafBadges : undefined}
-        actions={itemActions ? leafActions : undefined}
-        menuItems={getItemMenuItems?.(node.value)}
-        dense={itemDense}
-        alwaysShowActions={alwaysShowItemActions}
-        labelClass={getItemLabelClass?.(node.value)}
-        class={cn(cardClass(rowIndex), itemClass, getItemClass?.(node.value))}
-        indent={baseIndent + (indentItems ? row.depth : 0)}
-        role="treeitem"
-        tabindex={focusedId === node.id ? 0 : -1}
-        contentTabindex={-1}
-        ariaExpanded={expandable ? open : undefined}
-        ariaLevel={row.depth + 1}
-        ariaPosInSet={row.posInSet}
-        ariaSetSize={row.setSize}
-        dataId={node.id}
-        onfocus={() => (focusedId = node.id)}
-        onkeydown={(event) => handleKeydown(event, node)}
-        onclick={(event) => activateFromPointer(event, node)}
-      />
-    {/if}
-  {/each}
+    </VirtualScroller>
+  {:else}
+    {#each rows as row, rowIndex (row.node.id)}
+      {@render renderRow(row, rowIndex)}
+    {/each}
+  {/if}
 </div>

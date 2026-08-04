@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createAppShortcuts } from "./app-shortcuts.svelte";
+import { isMacPlatform } from "./keyboard";
 import type { CenterTabIdentity } from "$lib/features/workspace";
 
 class ShortcutTarget {
@@ -27,8 +28,8 @@ function shortcutEvent(
   const event = {
     key: "w",
     code: "KeyW",
-    ctrlKey: true,
-    metaKey: false,
+    ctrlKey: !isMacPlatform(),
+    metaKey: isMacPlatform(),
     altKey: false,
     shiftKey: false,
     target,
@@ -75,7 +76,7 @@ function shortcutOptions(
   };
 }
 
-test("Ctrl+W closes the active pane from an editable target", () => {
+test("the primary modifier closes the active pane from an editable target", () => {
   const activeTab: CenterTabIdentity = { kind: "settings", id: "settings" };
   let closedTab: CenterTabIdentity | undefined;
   const shortcuts = createAppShortcuts(
@@ -93,7 +94,7 @@ test("Ctrl+W closes the active pane from an editable target", () => {
   assert.equal(prevented(), true);
 });
 
-test("Ctrl+B toggles the left dock while an editable target is focused", () => {
+test("the primary modifier toggles the left dock from an editable target", () => {
   const toggled: string[] = [];
   const shortcuts = createAppShortcuts({
     ...shortcutOptions(undefined, () => undefined),
@@ -109,7 +110,7 @@ test("Ctrl+B toggles the left dock while an editable target is focused", () => {
   assert.deepEqual(toggled, ["left"]);
 });
 
-test("Ctrl+W prevents native window close when there is no active pane", () => {
+test("the primary modifier prevents native close without an active pane", () => {
   let closeCalls = 0;
   const shortcuts = createAppShortcuts(
     shortcutOptions(undefined, () => {

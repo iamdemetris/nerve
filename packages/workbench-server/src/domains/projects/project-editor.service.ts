@@ -46,6 +46,7 @@ type EditorDefinition = {
 type ProjectEditorServiceOptions = {
   spawnCommand?: SpawnCommand;
   locate?: typeof locateExecutable;
+  appPathExists?: (path: string) => Promise<boolean>;
 };
 
 const EDITOR_ORDER: ProjectEditor[] = ["vscode", "zed"];
@@ -112,6 +113,7 @@ const EDITORS: Record<ProjectEditor, EditorDefinition> = {
 export class ProjectEditorService {
   private readonly spawnCommand: SpawnCommand;
   private readonly locate: typeof locateExecutable;
+  private readonly appPathExists: (path: string) => Promise<boolean>;
   private launchers: Partial<Record<ProjectEditor, EditorLauncher>> = {};
   private statuses: ExternalEditorStatuses = unavailableStatuses();
 
@@ -124,6 +126,7 @@ export class ProjectEditorService {
       ((command, args, spawnOptions) =>
         spawnExecutable(command, args, spawnOptions));
     this.locate = options.locate ?? locateExecutable;
+    this.appPathExists = options.appPathExists ?? pathExists;
   }
 
   async refresh(): Promise<ExternalEditorStatuses> {
@@ -235,7 +238,7 @@ export class ProjectEditorService {
 
     if (process.platform === "darwin") {
       for (const appPath of definition.macAppPaths()) {
-        if (await pathExists(appPath)) {
+        if (await this.appPathExists(appPath)) {
           return {
             editor,
             source: "app",
