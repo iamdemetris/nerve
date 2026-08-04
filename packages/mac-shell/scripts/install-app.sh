@@ -12,11 +12,14 @@ if [ ! -d "$APP" ]; then
   exit 1
 fi
 
-# Replacing a running app leaves a broken bundle, so stop it first.
-if pgrep -x "Nerve" >/dev/null 2>&1; then
+# Replacing a running app leaves a broken bundle, so stop both the native shell
+# and older Electron builds before moving the bundle.
+if [ -d "$TARGET" ] || pgrep -x "Nerve" >/dev/null 2>&1 || pgrep -x "nerve-desktop" >/dev/null 2>&1; then
   echo "==> Quitting the running Nerve app"
-  osascript -e 'quit app "Nerve"' 2>/dev/null || pkill -x Nerve || true
+  osascript -e 'quit app "Nerve"' 2>/dev/null || true
   sleep 1
+  pkill -x Nerve 2>/dev/null || true
+  pkill -x nerve-desktop 2>/dev/null || true
 fi
 
 echo "==> Installing to $TARGET"
