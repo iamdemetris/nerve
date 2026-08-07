@@ -13,6 +13,7 @@ import { ShellTitlebar } from "$lib/presentation/shell";
 import { Button } from "@nervekit/ui-kit/components/ui/button";
 import type { LatestRelease } from "@nervekit/contracts";
 import VersionIndicator from "$lib/app/shell/VersionIndicator.svelte";
+import { ChatGptVoiceControl } from "$lib/features/voice";
 
 type Props = {
   desktop?: boolean;
@@ -81,6 +82,7 @@ let {
           <Logs size={16} strokeWidth={2.1} />
         </Button>
       {/if}
+      <ChatGptVoiceControl />
       <Button
         variant="ghost"
         size="icon-sm"

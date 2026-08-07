@@ -301,6 +301,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         return nil
     }
 
+    /// Voice capture is available only to the local Nerve workbench. The OS
+    /// still presents its normal app-level microphone permission on first use.
+    @available(macOS 12.0, *)
+    func webView(
+        _ webView: WKWebView,
+        requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+        initiatedByFrame frame: WKFrameInfo,
+        type: WKMediaCaptureType,
+        decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+        let isLocal = origin.host == "127.0.0.1" || origin.host == "localhost"
+        switch type {
+        case .microphone where isLocal:
+            decisionHandler(.grant)
+        default:
+            decisionHandler(.deny)
+        }
+    }
+
     // MARK: Lifecycle
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
