@@ -34,14 +34,7 @@ export type {
   TranscriptItem,
 } from "./state/conversation-state.svelte";
 export { conversationState } from "./state/conversation-state.svelte";
-export {
-  ensureAgent,
-  sendPrompt,
-  sendPromptText,
-  setActiveComposerText,
-} from "./state/prompt-send";
-export { openPendingConversation } from "./state/pending";
-export { openConversation } from "./state/tabs";
+export { setActiveComposerText } from "./state/prompt-send";
 export {
   abortActiveRun,
   cancelActiveCompaction,

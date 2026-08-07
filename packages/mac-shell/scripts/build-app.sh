@@ -70,7 +70,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
   <key>NSHighResolutionCapable</key><true/>
   <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Nerve uses the microphone when you start ChatGPT Voice or composer voice input.</string>
+  <string>Nerve uses the microphone for composer voice input.</string>
   <key>NerveNodePath</key><string>$NODE_PATH</string>
   <key>NerveDaemonScript</key><string>$DAEMON_SCRIPT</string>
   <key>NSAppTransportSecurity</key>

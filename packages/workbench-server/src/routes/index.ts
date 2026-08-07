@@ -19,7 +19,6 @@ import { createStorageRoutes } from "./storage-routes.js";
 import { createTaskRoutes } from "./task-routes.js";
 import { createToolRoutes } from "./tool-routes.js";
 import { createTranscriptionRoutes } from "./transcription-routes.js";
-import { createVoiceRoutes } from "./voice-routes.js";
 import { createWorkerRoutes } from "./worker-routes.js";
 import { createWorkspaceRoutes } from "./workspace-routes.js";
 
@@ -35,7 +34,6 @@ export function mountApiRoutes(app: Hono, state: OrchestratorState): void {
   app.route("/api", createModelRoutes(state));
   app.route("/api", createToolRoutes(state));
   app.route("/api", createTranscriptionRoutes(state));
-  app.route("/api", createVoiceRoutes(state));
   app.route("/api", createWorkerRoutes(state));
   app.route("/api", createWorkspaceRoutes(state));
 
