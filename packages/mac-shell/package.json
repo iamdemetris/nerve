@@ -1,6 +1,6 @@
 {
   "name": "@nervekit/mac-shell",
-  "version": "0.18.0",
+  "version": "0.21.0",
   "private": true,
   "description": "Native macOS WKWebView shell for the Nerve workbench, used instead of Electron.",
   "license": "Apache-2.0",
