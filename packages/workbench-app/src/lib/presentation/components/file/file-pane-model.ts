@@ -1,14 +1,14 @@
 import {
   defaultFileDisplayMode,
-  isMarkdownPath,
+  fileRenderKind,
   type FileDisplayMode,
+  type FileRenderKind,
 } from "@nervekit/ui-kit/core/utils/file-display";
-import { extname } from "../../tools/views/lang.js";
 import type { FilePaneViewModel } from "./types.js";
 
 export type ResolvedFilePaneModel = {
   filePath: string;
-  markdown: boolean;
+  renderKind?: FileRenderKind;
   lineStart: number;
   targetLine?: number;
   displayMode: FileDisplayMode;
@@ -44,11 +44,11 @@ export function resolveFilePaneModel(
 
   return {
     filePath,
-    markdown: isMarkdownPath(filePath),
+    renderKind: fileRenderKind(filePath),
     lineStart: file?.lineStart ?? 1,
     targetLine,
     displayMode,
-    language: extname(filePath),
+    language: filePath,
     imageSrc: imageDataUrl(view),
     textLength,
     scrollSignature:

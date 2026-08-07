@@ -5,15 +5,12 @@ import {
   ContextPanelView,
   conversationSelectors,
 } from "$lib/features/conversations";
-import { FilesPanelView } from "$lib/features/filesystem";
 import {
   GitPanelView,
-  GitPullRequestsPanelView,
   type GitPanelActions,
   type GitPanelModel,
 } from "$lib/presentation";
 import { ConversationsPanelView } from "$lib/features/projects";
-import { NotesPanelView } from "$lib/features/scratch-notes";
 import {
   cancelSelectedTask,
   loadEarlierTaskLogs,
@@ -24,8 +21,6 @@ import {
   runTaskCommand,
   selectTask,
   taskSelectors,
-  TerminalPanelView,
-  TasksPanelView,
 } from "$lib/features/tasks";
 import {
   exportUrl,
@@ -38,6 +33,38 @@ import {
   activatePanelView,
   revealPanelView,
 } from "$lib/app/shell/shell-layout.svelte";
+import LazyShellPending from "$lib/app/shell/LazyShellPending.svelte";
+
+// Panels that are not part of the default visible layout are code-split so
+// their feature modules are not parsed during startup. The import fires when
+// the panel is first activated.
+let filesModule = $state<
+  | Promise<{
+      default: typeof import("$lib/features/filesystem/components/FilesPanelView.svelte").default;
+    }>
+  | undefined
+>();
+let tasksModule = $state<
+  | Promise<{
+      default: typeof import("$lib/features/tasks/components/TasksPanelView.svelte").default;
+    }>
+  | undefined
+>();
+let terminalModule = $state<
+  | Promise<{
+      default: typeof import("$lib/features/tasks/components/TerminalPanelView.svelte").default;
+    }>
+  | undefined
+>();
+let notesModule = $state<
+  Promise<typeof import("$lib/features/scratch-notes")> | undefined
+>();
+let pullRequestsModule = $state<
+  | Promise<{
+      default: typeof import("$lib/presentation/git/GitPullRequestsPanelView.svelte").default;
+    }>
+  | undefined
+>();
 
 let {
   viewId,
@@ -61,6 +88,23 @@ const tasks = $derived(taskSelectors.scopedTasks);
 const selectedTask = $derived(taskSelectors.selectedTask);
 const taskLogs = $derived(taskSelectors.taskLogs);
 
+$effect(() => {
+  if (viewId === "files")
+    filesModule ??=
+      import("$lib/features/filesystem/components/FilesPanelView.svelte");
+  else if (viewId === "tasks")
+    tasksModule ??=
+      import("$lib/features/tasks/components/TasksPanelView.svelte");
+  else if (viewId === "terminal")
+    terminalModule ??=
+      import("$lib/features/tasks/components/TerminalPanelView.svelte");
+  else if (viewId === "notes")
+    notesModule ??= import("$lib/features/scratch-notes");
+  else if (viewId === "pull-requests")
+    pullRequestsModule ??=
+      import("$lib/presentation/git/GitPullRequestsPanelView.svelte");
+});
+
 function selectAgent(agent: AgentRecord) {
   selection.agentId = agent.id;
   selection.projectId = agent.projectId;
@@ -75,13 +119,25 @@ function focusTasks() {
 </script>
 
 {#if viewId === "files"}
-  <FilesPanelView {activeProject} />
+  {#await filesModule}
+    <LazyShellPending />
+  {:then module}
+    {@const Component = module?.default}
+    {#if Component}<Component {activeProject} />{/if}
+  {/await}
 {:else if viewId === "conversations"}
   <ConversationsPanelView />
 {:else if viewId === "git"}
   <GitPanelView model={gitModel} actions={gitActions} />
 {:else if viewId === "pull-requests"}
-  <GitPullRequestsPanelView model={gitModel} actions={gitActions} />
+  {#await pullRequestsModule}
+    <LazyShellPending />
+  {:then module}
+    {@const Component = module?.default}
+    {#if Component}
+      <Component model={gitModel} actions={gitActions} />
+    {/if}
+  {/await}
 {:else if viewId === "context"}
   <ContextPanelView
     {status}
@@ -98,36 +154,55 @@ function focusTasks() {
     onCompact={() => void compactActiveConversation()}
   />
 {:else if viewId === "notes"}
-  <NotesPanelView {activeProject} />
+  {#await notesModule}
+    <LazyShellPending />
+  {:then module}
+    {@const Component = module?.NotesPanelView}
+    {#if Component}<Component {activeProject} />{/if}
+  {/await}
 {:else if viewId === "terminal"}
-  <TerminalPanelView
-    {activeProject}
-    {tasks}
-    {selectedTask}
-    {taskLogs}
-    onSelectTask={(id) => selectTask(id)}
-    onRunCommand={(input) => runTaskCommand(input)}
-    onCancelTask={(id) => cancelSelectedTask(id)}
-    onRestartTask={(id) => restartSelectedTask(id)}
-    onLoadEarlier={(id) => loadEarlierTaskLogs(id)}
-  />
+  {#await terminalModule}
+    <LazyShellPending />
+  {:then module}
+    {@const Component = module?.default}
+    {#if Component}
+      <Component
+        {activeProject}
+        {tasks}
+        {selectedTask}
+        {taskLogs}
+        onSelectTask={(id) => selectTask(id)}
+        onRunCommand={(input) => runTaskCommand(input)}
+        onCancelTask={(id) => cancelSelectedTask(id)}
+        onRestartTask={(id) => restartSelectedTask(id)}
+        onLoadEarlier={(id) => loadEarlierTaskLogs(id)}
+      />
+    {/if}
+  {/await}
 {:else if viewId === "tasks"}
-  <TasksPanelView
-    {activeProject}
-    {tasks}
-    {selectedTask}
-    homeDir={status?.storage.userHome}
-    onOpenTaskOutput={(id) => {
-      focusTasks();
-      void openTaskTab(id);
-    }}
-    onCancelTask={(id, request) => void cancelSelectedTask(id, request)}
-    onRestartTask={(id) => void restartSelectedTask(id)}
-    onRemoveTask={(id) => void removeTask(id)}
-    onPruneTasks={() => void pruneFinishedTasks()}
-    onRunCommand={(input) => {
-      focusTasks();
-      void runTaskCommand(input);
-    }}
-  />
+  {#await tasksModule}
+    <LazyShellPending />
+  {:then module}
+    {@const Component = module?.default}
+    {#if Component}
+      <Component
+        {activeProject}
+        {tasks}
+        {selectedTask}
+        homeDir={status?.storage.userHome}
+        onOpenTaskOutput={(id) => {
+          focusTasks();
+          void openTaskTab(id);
+        }}
+        onCancelTask={(id, request) => void cancelSelectedTask(id, request)}
+        onRestartTask={(id) => void restartSelectedTask(id)}
+        onRemoveTask={(id) => void removeTask(id)}
+        onPruneTasks={() => void pruneFinishedTasks()}
+        onRunCommand={(input) => {
+          focusTasks();
+          void runTaskCommand(input);
+        }}
+      />
+    {/if}
+  {/await}
 {/if}

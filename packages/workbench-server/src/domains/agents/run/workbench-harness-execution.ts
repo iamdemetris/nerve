@@ -158,8 +158,9 @@ export async function executeWorkbenchHarness(
     };
     const liveToolDraftReconciler = new LiveToolDraftReconciler({
       conversationRuntime: this.deps.state.conversationRuntime,
-      publish: async (type, data) => {
-        await this.deps.events.publish(type, data);
+      publish: (type, data) => {
+        this.deps.events.publishBestEffort(type, data, type);
+        return Promise.resolve();
       },
       runId,
       getTurnId: () => currentTurnId,
@@ -222,14 +223,18 @@ export async function executeWorkbenchHarness(
     const startLiveTurn = async () => {
       const turn = this.deps.state.conversationRuntime.startTurn(runId);
       currentTurnId = turn.turnId;
-      await this.deps.events.publish("conversation.live.turn.started", {
-        conversationId: conversation.id,
-        agentId: agent.id,
-        projectId: project.id,
-        runId,
-        turnId: turn.turnId,
-        ordinal: turn.ordinal,
-      });
+      this.deps.events.publishBestEffort(
+        "conversation.live.turn.started",
+        {
+          conversationId: conversation.id,
+          agentId: agent.id,
+          projectId: project.id,
+          runId,
+          turnId: turn.turnId,
+          ordinal: turn.ordinal,
+        },
+        "conversation.live.turn.started",
+      );
       return turn.turnId;
     };
     harness.subscribe(async (event) => {
@@ -325,9 +330,10 @@ export async function executeWorkbenchHarness(
         liveToolDraftNames.clear();
         liveToolDraftProgress.clear();
         liveToolDrafts.clear();
-        await this.deps.events.publish(
+        this.deps.events.publishBestEffort(
           "conversation.live.message.started",
           started,
+          "conversation.live.message.started",
         );
         return;
       }
@@ -343,9 +349,10 @@ export async function executeWorkbenchHarness(
             kind: "text",
             delta: update.delta,
           });
-          await this.deps.events.publish(
+          this.deps.events.publishBestEffort(
             "conversation.live.content.delta",
             data,
+            "conversation.live.content.delta",
           );
         } else if (update.type === "thinking_delta") {
           const data = this.deps.state.conversationRuntime.applyContentDelta({
@@ -356,9 +363,10 @@ export async function executeWorkbenchHarness(
             kind: "thinking",
             delta: update.delta,
           });
-          await this.deps.events.publish(
+          this.deps.events.publishBestEffort(
             "conversation.live.content.delta",
             data,
+            "conversation.live.content.delta",
           );
         } else if (update.type === "text_end") {
           const data = this.deps.state.conversationRuntime.finishContent({
@@ -369,9 +377,10 @@ export async function executeWorkbenchHarness(
             kind: "text",
             finalText: update.content,
           });
-          await this.deps.events.publish(
+          this.deps.events.publishBestEffort(
             "conversation.live.content.done",
             data,
+            "conversation.live.content.done",
           );
         } else if (update.type === "thinking_end") {
           const data = this.deps.state.conversationRuntime.finishContent({
@@ -386,9 +395,10 @@ export async function executeWorkbenchHarness(
               update.contentIndex,
             ),
           });
-          await this.deps.events.publish(
+          this.deps.events.publishBestEffort(
             "conversation.live.content.done",
             data,
+            "conversation.live.content.done",
           );
         } else if (update.type === "toolcall_start") {
           const draft = assistantToolCallDraft(
@@ -416,9 +426,10 @@ export async function executeWorkbenchHarness(
             providerToolCallId: draft?.id,
             toolName: draft?.name,
           });
-          await this.deps.events.publish(
+          this.deps.events.publishBestEffort(
             "conversation.live.tool_draft.started",
             data,
+            "conversation.live.tool_draft.started",
           );
         } else if (update.type === "toolcall_delta") {
           const draft = assistantToolCallDraft(
@@ -451,9 +462,10 @@ export async function executeWorkbenchHarness(
                 toolName,
                 delta: update.delta,
               });
-            await this.deps.events.publish(
+            this.deps.events.publishBestEffort(
               "conversation.live.tool_draft.delta",
               data,
+              "conversation.live.tool_draft.delta",
             );
             return;
           }
@@ -475,9 +487,10 @@ export async function executeWorkbenchHarness(
               toolName,
               progress,
             });
-          await this.deps.events.publish(
+          this.deps.events.publishBestEffort(
             "conversation.live.tool_draft.progress",
             data,
+            "conversation.live.tool_draft.progress",
           );
         } else if (update.type === "toolcall_end") {
           liveToolDraftNames.delete(update.contentIndex);
@@ -499,9 +512,10 @@ export async function executeWorkbenchHarness(
             toolName: update.toolCall.name,
             args: toPublicToolCallArgsPreview(update.toolCall.arguments),
           });
-          await this.deps.events.publish(
+          this.deps.events.publishBestEffort(
             "conversation.live.tool_draft.done",
             data,
+            "conversation.live.tool_draft.done",
           );
         }
         return;

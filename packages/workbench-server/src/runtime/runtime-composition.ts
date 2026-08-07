@@ -561,6 +561,7 @@ export function composeRuntime(
     getConversationEntries: (conversationId) =>
       state.getConversationEntries(conversationId),
     harnessStorage: services.harnessStorage,
+    logger: logger.child({ component: "human-input" }),
     compactPlanConversation: async (input) => {
       await services.compactionService.compactConversation(
         input.conversationId,

@@ -39,9 +39,10 @@ import {
 type Props = {
   value: string;
   placeholder?: string;
+  ariaLabel?: string;
   disabled?: boolean;
   focusToken?: number;
-  slashCompletions?: CompletionItem[];
+  slashCompletions?: readonly CompletionItem[];
   fileCompletions?: (query: string) => Promise<CompletionItem[]>;
   /** Overlay copy while dragging files over the editor. */
   dropOverlayLabel?: string;
@@ -65,6 +66,7 @@ const projectReferenceSection: CompletionSection = {
 let {
   value,
   placeholder = "Ask the Nerve agent",
+  ariaLabel = "Prompt editor drop area",
   disabled = false,
   focusToken = 0,
   slashCompletions = [],
@@ -784,7 +786,7 @@ onDestroy(() => view?.destroy());
   class="composer-editor relative"
   class:disabled
   role="group"
-  aria-label="Prompt editor drop area"
+  aria-label={ariaLabel}
   ondragentercapture={handleFileDragEnter}
   ondragovercapture={handleFileDragOver}
   ondragleavecapture={handleFileDragLeave}
@@ -804,10 +806,10 @@ onDestroy(() => view?.destroy());
 
 <style>
 .composer-editor {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--input);
+  background: var(--background);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,

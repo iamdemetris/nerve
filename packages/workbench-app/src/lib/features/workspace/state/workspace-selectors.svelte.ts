@@ -11,7 +11,7 @@ import {
 } from "$lib/core/state/state-keys";
 import {
   defaultFileDisplayMode,
-  isMarkdownPath,
+  fileRenderKind,
 } from "@nervekit/ui-kit/core/utils/file-display";
 import { authState } from "$lib/features/auth/state/auth-state.svelte";
 import {
@@ -297,7 +297,7 @@ export const workspaceSelectors = {
         relativePath: view?.content?.relativePath,
         displayMode: view?.displayMode ?? defaultFileDisplayMode(displayPath),
         wrapLines: Boolean(view?.wrapLines),
-        markdown: isMarkdownPath(displayPath),
+        renderKind: fileRenderKind(displayPath),
         active: activeTabMatches("file", id),
         sending: Boolean(view?.loading),
         error: view?.error,

@@ -1,6 +1,6 @@
 {
   "name": "@nervekit/workbench-server",
-  "version": "0.18.0",
+  "version": "0.21.0",
   "private": true,
   "author": "ThilinaTLM",
   "license": "Apache-2.0",
@@ -42,8 +42,8 @@
     "test:native": "tsx --test test/file-idempotency-store.test.ts test/file-mutations.test.ts test/legacy-home-migration.test.ts test/policy.test.ts test/process-runtime-driver.test.ts test/protocol-websocket.test.ts test/storage-json.test.ts test/storage-settings-migration.test.ts test/task-port-inspector.test.ts test/task-scope.test.ts test/task-service.contract.test.ts test/task-supervisor.test.ts test/workbench-task-service-foreground.test.ts test/workbench-task-service-launch-env.test.ts test/workbench-task-service-lifecycle.test.ts test/workbench-task-service-orphan.test.ts test/workbench-task-service-readiness.test.ts"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.83.0",
-    "@hono/node-server": "2.0.11",
+    "@earendil-works/pi-ai": "0.84.1",
+    "@hono/node-server": "2.0.12",
     "@nervekit/acp": "workspace:*",
     "@nervekit/contracts": "workspace:*",
     "@nervekit/harness": "workspace:*",
@@ -51,7 +51,7 @@
     "@nervekit/tools": "workspace:*",
     "@peculiar/x509": "^2.0.0",
     "fdir": "6.5.0",
-    "hono": "4.12.32",
+    "hono": "4.12.34",
     "reflect-metadata": "^0.2.2",
     "ws": "8.21.0",
     "yaml": "2.9.0",

@@ -1,11 +1,11 @@
 {
   "name": "nerve",
-  "version": "0.18.0",
+  "version": "0.21.0",
   "private": true,
   "author": "ThilinaTLM",
   "license": "Apache-2.0",
   "type": "module",
-  "packageManager": "pnpm@11.17.0",
+  "packageManager": "pnpm@11.20.0",
   "workspaces": [
     "packages/*"
   ],
@@ -30,7 +30,7 @@
     "test:scripts": "node --test \"scripts/**/*.test.mjs\""
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.83.0"
+    "@earendil-works/pi-ai": "0.84.1"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -1,5 +1,5 @@
 <script lang="ts">
-import { untrack } from "svelte";
+import { tick, untrack } from "svelte";
 import { writeClipboardText } from "@nervekit/ui-kit/core/clipboard";
 import {
   decorateMarkdownHtml,
@@ -19,10 +19,16 @@ import {
   resolveDisplayPath,
   splitPathLineSuffix,
 } from "@nervekit/ui-kit/core/utils/path-links";
+import {
+  enhanceMermaidBlocks,
+  type MermaidEnhancement,
+} from "./mermaid-render.js";
 
 type Props = {
   text: string;
   trimCodeBlocks?: boolean;
+  /** Convert Markdown soft line endings into semantic hard breaks. */
+  preserveLineBreaks?: boolean;
   /** Bound streaming work while deferring Shiki until completion. */
   streaming?: boolean;
   linkBasePath?: string;
@@ -30,44 +36,64 @@ type Props = {
   onCopy?: (ok: boolean) => void;
 };
 
-type StreamingValue = { source: string; trim: boolean };
+type StreamingValue = {
+  source: string;
+  trim: boolean;
+  preserveLineBreaks: boolean;
+};
 
 let {
   text,
   trimCodeBlocks = true,
+  preserveLineBreaks = false,
   streaming = false,
   linkBasePath,
   onOpenFile,
   onCopy,
 }: Props = $props();
 
-function renderStreamingPrefix(source: string, trim: boolean): string {
+function renderStreamingPrefix(
+  source: string,
+  trim: boolean,
+  preserveBreaks: boolean,
+): string {
   if (!source) return "";
-  return decorateMarkdownHtml(renderMarkdown(source, { cache: false }), trim);
+  return decorateMarkdownHtml(
+    renderMarkdown(source, {
+      cache: false,
+      preserveLineBreaks: preserveBreaks,
+    }),
+    trim,
+  );
 }
 
 const initialRender = untrack(() => {
   const parts = streaming ? splitStreamingMarkdown(text) : undefined;
   return {
-    html: streaming ? "" : renderBestAvailableMarkdown(text, trimCodeBlocks),
+    html: streaming
+      ? ""
+      : renderBestAvailableMarkdown(text, trimCodeBlocks, preserveLineBreaks),
     prefixHtml: parts
-      ? renderStreamingPrefix(parts.prefix, trimCodeBlocks)
+      ? renderStreamingPrefix(parts.prefix, trimCodeBlocks, preserveLineBreaks)
       : "",
     prefixSource: parts?.prefix ?? "",
     tail: parts?.tail ?? "",
     streaming,
     source: text,
     trim: trimCodeBlocks,
+    preserveLineBreaks,
   };
 });
 let html = $state(initialRender.html);
 let streamingPrefixHtml = $state(initialRender.prefixHtml);
 let streamingPrefixSource = initialRender.prefixSource;
 let streamingPrefixTrim = initialRender.trim;
+let streamingPrefixPreserveLineBreaks = initialRender.preserveLineBreaks;
 let streamingTail = $state(initialRender.tail);
 let showingStreaming = $state(initialRender.streaming);
 let lastEnqueuedSource = initialRender.source;
 let lastEnqueuedTrim = initialRender.trim;
+let lastEnqueuedPreserveLineBreaks = initialRender.preserveLineBreaks;
 let highlightToken = 0;
 
 async function handleClick(event: MouseEvent) {
@@ -111,15 +137,47 @@ function copyButtonHandler(node: HTMLDivElement) {
   };
 }
 
+type MermaidActionValue = { html: string; enabled: boolean };
+
+function mermaidHandler(node: HTMLDivElement, value: MermaidActionValue) {
+  let generation = 0;
+  let enhancement: MermaidEnhancement | undefined;
+
+  async function update(next: MermaidActionValue) {
+    const current = ++generation;
+    enhancement?.destroy();
+    enhancement = undefined;
+    if (!next.enabled || !next.html.includes("data-mermaid-diagram")) return;
+    await tick();
+    if (current !== generation) return;
+    enhancement = enhanceMermaidBlocks(node);
+  }
+
+  void update(value);
+  return {
+    update,
+    destroy() {
+      generation += 1;
+      enhancement?.destroy();
+    },
+  };
+}
+
 function commitStreaming(value: StreamingValue) {
   const parts = splitStreamingMarkdown(value.source);
   if (
     parts.prefix !== streamingPrefixSource ||
-    value.trim !== streamingPrefixTrim
+    value.trim !== streamingPrefixTrim ||
+    value.preserveLineBreaks !== streamingPrefixPreserveLineBreaks
   ) {
-    streamingPrefixHtml = renderStreamingPrefix(parts.prefix, value.trim);
+    streamingPrefixHtml = renderStreamingPrefix(
+      parts.prefix,
+      value.trim,
+      value.preserveLineBreaks,
+    );
     streamingPrefixSource = parts.prefix;
     streamingPrefixTrim = value.trim;
+    streamingPrefixPreserveLineBreaks = value.preserveLineBreaks;
   }
   streamingTail = parts.tail;
   showingStreaming = true;
@@ -131,16 +189,24 @@ const streamingScheduler = new LatestPresentationScheduler<StreamingValue>(
 );
 
 /** Full render + async Shiki highlight. Used only for finalized content. */
-function renderWithHighlight(source: string, trim: boolean) {
-  const cachedHighlighted = getHighlightedMarkdownSync(source, trim);
+function renderWithHighlight(
+  source: string,
+  trim: boolean,
+  preserveBreaks: boolean,
+) {
+  const cachedHighlighted = getHighlightedMarkdownSync(
+    source,
+    trim,
+    preserveBreaks,
+  );
   if (cachedHighlighted !== undefined) {
     html = cachedHighlighted;
     highlightToken += 1;
     return;
   }
-  html = renderDecoratedMarkdown(source, trim);
+  html = renderDecoratedMarkdown(source, trim, preserveBreaks);
   const token = (highlightToken += 1);
-  renderHighlightedMarkdown(source, trim)
+  renderHighlightedMarkdown(source, trim, preserveBreaks)
     .then((highlighted) => {
       if (token === highlightToken) {
         html = highlighted;
@@ -148,7 +214,7 @@ function renderWithHighlight(source: string, trim: boolean) {
     })
     .catch(() => {
       if (token === highlightToken) {
-        html = renderDecoratedMarkdown(source, trim);
+        html = renderDecoratedMarkdown(source, trim, preserveBreaks);
       }
     });
 }
@@ -156,29 +222,46 @@ function renderWithHighlight(source: string, trim: boolean) {
 $effect(() => {
   const source = text;
   const trim = trimCodeBlocks;
+  const preserveBreaks = preserveLineBreaks;
   if (!streaming) {
-    if (showingStreaming) streamingScheduler.flushNow({ source, trim });
+    if (showingStreaming) {
+      streamingScheduler.flushNow({
+        source,
+        trim,
+        preserveLineBreaks: preserveBreaks,
+      });
+    }
     showingStreaming = false;
-    renderWithHighlight(source, trim);
+    renderWithHighlight(source, trim, preserveBreaks);
     lastEnqueuedSource = source;
     lastEnqueuedTrim = trim;
+    lastEnqueuedPreserveLineBreaks = preserveBreaks;
     return;
   }
 
   const priority =
     !showingStreaming ||
     trim !== lastEnqueuedTrim ||
+    preserveBreaks !== lastEnqueuedPreserveLineBreaks ||
     appendedNewline(lastEnqueuedSource, source);
   lastEnqueuedSource = source;
   lastEnqueuedTrim = trim;
-  streamingScheduler.enqueue({ source, trim }, { priority });
+  lastEnqueuedPreserveLineBreaks = preserveBreaks;
+  streamingScheduler.enqueue(
+    { source, trim, preserveLineBreaks: preserveBreaks },
+    { priority },
+  );
 });
 
 $effect(() => () => streamingScheduler.destroy());
 </script>
 
 {#if showingStreaming}
-  <div class="markdown" use:copyButtonHandler>
+  <div
+    class="markdown"
+    use:copyButtonHandler
+    use:mermaidHandler={{ html: streamingPrefixHtml, enabled: false }}
+  >
     <!-- eslint-disable-next-line svelte/no-at-html-tags -- the prefix uses the sanitized Markdown pipeline. -->
     {@html streamingPrefixHtml}
     {#if streamingTail}
@@ -186,8 +269,14 @@ $effect(() => () => streamingScheduler.destroy());
     {/if}
   </div>
 {:else}
-  <!-- eslint-disable-next-line svelte/no-at-html-tags -- renderMarkdown applies rehype-sanitize before producing markup. -->
-  <div class="markdown" use:copyButtonHandler>{@html html}</div>
+  <div
+    class="markdown"
+    use:copyButtonHandler
+    use:mermaidHandler={{ html, enabled: true }}
+  >
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -- renderMarkdown applies rehype-sanitize before producing markup. -->
+    {@html html}
+  </div>
 {/if}
 <style>
 .markdown {
@@ -213,7 +302,8 @@ $effect(() => () => streamingScheduler.destroy());
 .markdown :global(blockquote),
 .markdown :global(pre),
 .markdown :global(.table-scroll),
-.markdown :global(.code-block) {
+.markdown :global(.code-block),
+.markdown :global(.mermaid-block) {
   margin: 0.55rem 0;
 }
 
@@ -331,6 +421,34 @@ $effect(() => () => streamingScheduler.destroy());
   border-color: var(--accent);
   background: var(--accent);
   color: var(--primary);
+}
+
+.markdown :global(.mermaid-block) {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  padding: 1rem;
+}
+
+.markdown :global(.mermaid-block[data-state="loading"] pre) {
+  opacity: 0.7;
+}
+
+.markdown :global(.mermaid-block svg) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown :global(.mermaid-block .mermaid-error) {
+  justify-self: stretch;
+  margin: 0.5rem 0 0;
+  color: var(--destructive);
+  font-size: var(--text-xs);
 }
 
 .markdown :global(pre) {

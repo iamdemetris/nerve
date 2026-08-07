@@ -53,6 +53,16 @@ type Props = {
   getItemLabelClass?: (item: T) => string | undefined;
   /** Controls the first disclosure state seen for an expandable item. */
   getItemInitiallyExpanded?: (item: T) => boolean;
+  getItemTone?: (
+    item: T,
+  ) =>
+    | "default"
+    | "muted"
+    | "destructive"
+    | "success"
+    | "warning"
+    | "info"
+    | undefined;
   /** Controlled expansion state. Node ids are the ids produced by the builders. */
   expandedIds?: ReadonlySet<string>;
   /** Uncontrolled initial expansion policy. Existing callers default to all. */
@@ -60,6 +70,8 @@ type Props = {
   onItemExpansionChange?: (item: T, expanded: boolean) => void;
   /** Opt into a single fixed-height virtualized viewport for large trees. */
   virtualized?: boolean;
+  /** Hide item disclosure arrows when open/closed leading icons carry state. */
+  showDisclosure?: boolean;
   itemMono?: boolean;
   /** Renders item descriptions on a second line instead of inline. */
   itemStacked?: boolean;
@@ -96,10 +108,12 @@ let {
   getItemClass,
   getItemLabelClass,
   getItemInitiallyExpanded,
+  getItemTone,
   expandedIds,
   defaultExpanded = "all",
   onItemExpansionChange,
   virtualized = false,
+  showDisclosure = true,
   itemMono = false,
   itemStacked = false,
   onItemActivate,
@@ -131,9 +145,9 @@ const expanded = $derived.by(() => {
 const rows = $derived(visiblePanelTreeRows(nodes, expanded));
 /** Reserve the chevron column so leaf rows align with expandable siblings. */
 const hasExpandableItems = $derived(
-  rows.some((row) => row.node.kind === "item" && isExpandable(row.node)),
+  showDisclosure &&
+    rows.some((row) => row.node.kind === "item" && isExpandable(row.node)),
 );
-
 /** Card grouping: a root row opens a surface that its descendants continue. */
 function cardClass(index: number): string | undefined {
   if (itemVariant !== "card") return undefined;
@@ -314,7 +328,7 @@ function handleKeydown(event: KeyboardEvent, node: PanelTreeNode<T>): void {
     />
   {:else}
     {#snippet leafLeading()}
-      {#if expandable}
+      {#if showDisclosure && expandable}
         {#if open}
           <ChevronDown class="size-3" aria-hidden="true" />
         {:else}
@@ -342,11 +356,12 @@ function handleKeydown(event: KeyboardEvent, node: PanelTreeNode<T>): void {
       title={getItemTitle?.(node.value)}
       selected={getItemSelected?.(node.value) ?? false}
       disabled={getItemDisabled?.(node.value) ?? false}
+      tone={getItemTone?.(node.value)}
       mono={itemMono}
       stacked={itemStacked}
       leading={itemLeading ||
-      expandable ||
-      (reserveLeafDisclosureSpace && hasExpandableItems)
+      (showDisclosure &&
+        (expandable || (reserveLeafDisclosureSpace && hasExpandableItems)))
         ? leafLeading
         : undefined}
       labelTrailing={itemLabelTrailing ? leafLabelTrailing : undefined}

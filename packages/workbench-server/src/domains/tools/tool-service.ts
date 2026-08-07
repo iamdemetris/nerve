@@ -212,7 +212,6 @@ export class ToolService {
       updateToolCall: (id, patch) => this.updateToolCall(id, patch),
       publishToolCallUpdated: (toolCall) =>
         this.publishToolCallUpdated(toolCall),
-      logger: this.logger,
     });
     this.executor = new ToolExecutorService({
       getToolCall: (id) => this.getToolCall(id),
@@ -239,6 +238,16 @@ export class ToolService {
 
   listToolCalls(): ToolCallRecord[] {
     return this.toolCallRepository.list();
+  }
+
+  /** Whether the tool-call records were loaded from the persisted snapshot. */
+  get toolCallHydrationSource(): "snapshot" | "journal" {
+    return this.toolCallRepository.hydrationSource;
+  }
+
+  /** Record the journal watermark after a journal-based hydrate + rebuild. */
+  async markToolCallSnapshotPersisted(): Promise<void> {
+    await this.toolCallRepository.markToolCallSnapshotPersisted();
   }
 
   /** Compact the persisted tool-call log, dropping superseded append rows. */
