@@ -8,7 +8,7 @@ import { Button } from "@nervekit/ui-kit/components/ui/button";
 import AlertDialog from "@nervekit/ui-kit/components/ui/confirm-dialog";
 import { StatusDot } from "@nervekit/ui-kit/components/ui/status-dot";
 import * as Tooltip from "@nervekit/ui-kit/components/ui/tooltip";
-import type { ProjectRecord } from "$lib/api";
+import type { ConversationRecord, ProjectRecord } from "$lib/api";
 import { getShortcutLabel } from "$lib/core/shortcuts/registry";
 import {
   buildProjectGroups,
@@ -31,6 +31,7 @@ import {
   type ProjectActivityIndicator,
 } from "$lib/features/projects/state/project-switcher";
 import ProjectConversationsDialog from "./ProjectConversationsDialog.svelte";
+import ConversationManagementDialogs from "./ConversationManagementDialogs.svelte";
 import PruneConversationsDialog from "./PruneConversationsDialog.svelte";
 import {
   buildConversationMenu,
@@ -70,11 +71,15 @@ let {
   onOpenProjectInEditor,
   onDeleteProject,
   onDeleteConversation,
+  onRenameConversation,
+  onMoveConversation,
   onPruneProjectConversations,
 }: ProjectAgentTreeProps = $props();
 
 let pendingDelete = $state<DeleteTarget | undefined>();
 let pendingPrune = $state<PruneTarget | undefined>();
+let renameTarget = $state<ConversationRecord | undefined>();
+let moveTarget = $state<ConversationRecord | undefined>();
 let allConversationsOpen = $state(false);
 let projectSort = $state<"activity" | "name">("activity");
 
@@ -154,6 +159,8 @@ const menuContext = $derived<ProjectTreeMenuContext>({
       label: shortProjectLabel(project.dir, homeDir),
     };
   },
+  requestRenameConversation: (conversation) => (renameTarget = conversation),
+  requestMoveConversation: (conversation) => (moveTarget = conversation),
   requestDelete: (target) => (pendingDelete = target),
 });
 
@@ -410,6 +417,21 @@ function confirmPrune(
   onConfirm={confirmDelete}
   onOpenChange={(open) => {
     if (!open) pendingDelete = undefined;
+  }}
+/>
+
+<ConversationManagementDialogs
+  {renameTarget}
+  {moveTarget}
+  {projects}
+  {homeDir}
+  onRename={onRenameConversation}
+  onMove={onMoveConversation}
+  onRenameOpenChange={(open) => {
+    if (!open) renameTarget = undefined;
+  }}
+  onMoveOpenChange={(open) => {
+    if (!open) moveTarget = undefined;
   }}
 />
 

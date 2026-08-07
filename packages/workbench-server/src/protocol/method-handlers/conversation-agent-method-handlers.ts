@@ -13,6 +13,12 @@ export const conversationAgentMethodHandlers = defineWorkbenchMethodHandlers({
   "conversation.get": (state, params) => ({
     conversation: state.registry.getConversation(params.conversationId),
   }),
+  "conversation.update": async (state, params) => ({
+    conversation: await state.registry.updateConversationDetails(
+      params.conversationId,
+      params,
+    ),
+  }),
   "conversation.delete": async (state, params) => {
     await state.registry.removeConversation(params.conversationId);
     return { ok: true };

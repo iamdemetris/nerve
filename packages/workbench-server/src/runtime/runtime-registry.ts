@@ -30,13 +30,17 @@ import type {
   TaskLogQuery,
   ToolName,
   UpdateAgentRequest,
+  UpdateConversationRequest,
   UpdateScratchNoteRequest,
   UpdateTaskDefinitionRequest,
   UserQuestionStatus,
 } from "@nervekit/contracts";
 import type { AuthManager } from "../domains/auth/index.js";
 import type { AgentBrowserSkillCatalog } from "../domains/agents/prompting/agent-browser-skills.js";
-import type { ProviderCatalogStore } from "../domains/providers/index.js";
+import {
+  discoverCustomProviderModels,
+  type ProviderCatalogStore,
+} from "../domains/providers/index.js";
 import type { SubscriptionUsageService } from "../domains/usage/subscription-usage-service.js";
 import { ApplicationError } from "../core/application-error.js";
 import type { ApplicationLogger } from "../infrastructure/diagnostics/index.js";
@@ -339,6 +343,65 @@ export class RuntimeRegistry {
 
   getConversation(conversationId: string): ConversationRecord {
     return this.services.conversationLifecycle.getConversation(conversationId);
+  }
+
+  async updateConversationDetails(
+    conversationId: string,
+    request: UpdateConversationRequest,
+  ): Promise<ConversationRecord> {
+    const conversation = this.getConversation(conversationId);
+    const targetProject = request.projectId
+      ? this.getProject(request.projectId)
+      : undefined;
+    const moving = Boolean(
+      targetProject && targetProject.id !== conversation.projectId,
+    );
+    const conversationAgents = this.listAgents().filter(
+      (agent) => agent.conversationId === conversationId,
+    );
+    if (
+      moving &&
+      conversationAgents.some(
+        (agent) =>
+          agent.status === "running" || agent.status === "awaiting_user",
+      )
+    ) {
+      throw new ApplicationError(
+        409,
+        "CONVERSATION_BUSY",
+        "Stop the running conversation before moving it to another project.",
+      );
+    }
+
+    const updatedAt = new Date().toISOString();
+    if (moving && targetProject) {
+      await Promise.all(
+        conversationAgents.map((agent) =>
+          this.services.agentLifecycle.updateAgent({
+            ...agent,
+            projectId: targetProject.id,
+            projectDir: targetProject.dir,
+            workspaceScope: {
+              ...agent.workspaceScope,
+              roots: [targetProject.dir],
+            },
+            updatedAt,
+          }),
+        ),
+      );
+    }
+
+    const updated: ConversationRecord = {
+      ...conversation,
+      title: request.title ?? conversation.title,
+      projectId: targetProject?.id ?? conversation.projectId,
+      updatedAt,
+    };
+    await this.services.conversationLifecycle.updateConversation(updated);
+    await this.events.publish("conversation.updated", {
+      conversation: updated,
+    });
+    return updated;
   }
 
   async createAgent(
@@ -763,6 +826,51 @@ export class RuntimeRegistry {
 
   listModels(): ModelInfo[] {
     return listWorkbenchModels(this.providerCatalog, this.services.acpModels);
+  }
+
+  async refreshModels(
+    options: { provider?: string } = {},
+  ): Promise<ModelInfo[]> {
+    await this.providerCatalog.ensureLoaded();
+    const customProviders = this.providerCatalog.catalog.providers.filter(
+      (provider) => !options.provider || provider.id === options.provider,
+    );
+    const operations: Array<readonly [string, Promise<unknown>]> = [
+      [
+        "Network model refresh",
+        this.auth.refreshModels({
+          force: true,
+          providers: options.provider ? [options.provider] : undefined,
+        }),
+      ],
+      ...customProviders.map(
+        (provider) =>
+          [
+            `Custom model discovery (${provider.id})`,
+            this.refreshCustomProviderModels(provider.id),
+          ] as const,
+      ),
+    ];
+    if (!options.provider) {
+      operations.push([
+        "ACP model refresh",
+        this.services.acpModels.refresh(process.cwd(), { force: true }),
+      ]);
+    }
+    await this.logSettledOperations(operations);
+    return this.listModels();
+  }
+
+  private async refreshCustomProviderModels(providerId: string): Promise<void> {
+    const provider = this.providerCatalog.catalog.providers.find(
+      (candidate) => candidate.id === providerId,
+    );
+    if (!provider) return;
+    const models = await discoverCustomProviderModels(
+      provider,
+      await this.auth.getApiKey(providerId),
+    );
+    await this.providerCatalog.mergeDiscoveredModels(providerId, models);
   }
 
   async listQueuedPrompts(agentId: string) {

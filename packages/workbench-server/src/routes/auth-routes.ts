@@ -89,6 +89,7 @@ export function createAuthRoutes(state: OrchestratorState): Hono {
         throw new Error("Missing API key.");
       }
       await state.auth.setApiKey(body.provider, apiKey);
+      await state.registry.refreshModels({ provider: body.provider });
       await state.events.publish("secrets.provider_key_set", {
         provider: body.provider,
       });

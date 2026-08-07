@@ -78,7 +78,21 @@ export async function applyActiveConversationSelection(
     conversation.approvalPolicy;
 }
 
-export async function refreshConversationView(conversationId: string) {
+const conversationViewRefreshes = new Map<string, Promise<void>>();
+
+export function refreshConversationView(conversationId: string): Promise<void> {
+  const active = conversationViewRefreshes.get(conversationId);
+  if (active) return active;
+  const refresh = refreshConversationViewOnce(conversationId).finally(() => {
+    if (conversationViewRefreshes.get(conversationId) === refresh) {
+      conversationViewRefreshes.delete(conversationId);
+    }
+  });
+  conversationViewRefreshes.set(conversationId, refresh);
+  return refresh;
+}
+
+async function refreshConversationViewOnce(conversationId: string) {
   const view = ensureConversationView(conversationId);
   view.loading = true;
   try {

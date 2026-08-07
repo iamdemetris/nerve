@@ -17,11 +17,13 @@ import {
   type ProjectRecord,
   type PruneProjectConversationsRequest,
   pruneProjectConversations,
+  updateConversation,
 } from "$lib/api";
 import { queryClient, queryKeys } from "$lib/core/query";
 import { recoverSnapshotFromNetwork } from "$lib/core/events/snapshot-recovery";
 import { agentConfigOverride } from "$lib/features/conversations/state/agent-config-mutations.svelte";
 import {
+  openConversation,
   openPendingConversation,
   removeConversationTabs,
 } from "$lib/features/conversations/state/conversation-flow.svelte";
@@ -345,6 +347,61 @@ export async function deleteConversationAndRefresh(conversationId: string) {
     const message = caught instanceof Error ? caught.message : String(caught);
     workspaceState.error = message;
     notify.error("Could not remove conversation", { description: message });
+  }
+}
+
+export async function updateConversationAndNotify(
+  conversationId: string,
+  request: { title?: string; projectId?: string },
+): Promise<void> {
+  try {
+    const previous = workspaceState.conversations.find(
+      (conversation) => conversation.id === conversationId,
+    );
+    const wasActive = selection.conversationId === conversationId;
+    const updated = await updateConversation(conversationId, request);
+    workspaceState.conversations = workspaceState.conversations.map(
+      (conversation) =>
+        conversation.id === conversationId ? updated : conversation,
+    );
+
+    if (previous && previous.projectId !== updated.projectId) {
+      const target = workspaceState.projects.find(
+        (project) => project.id === updated.projectId,
+      );
+      if (target) {
+        workspaceState.agents = workspaceState.agents.map((agent) =>
+          agent.conversationId === conversationId
+            ? {
+                ...agent,
+                projectId: target.id,
+                projectDir: target.dir,
+                workspaceScope: {
+                  ...agent.workspaceScope,
+                  roots: [target.dir],
+                },
+                updatedAt: updated.updatedAt,
+              }
+            : agent,
+        );
+      }
+      removeTabsFromAllSessions(
+        (tab) => tab.kind === "conversation" && tab.id === conversationId,
+      );
+      if (wasActive) {
+        await selectProject(updated.projectId, { deferTabActivation: true });
+        void openConversation(conversationId);
+      }
+      notify.success("Conversation moved");
+      return;
+    }
+
+    notify.success("Conversation renamed");
+  } catch (caught) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    workspaceState.error = message;
+    notify.error("Could not update conversation", { description: message });
+    throw caught;
   }
 }
 

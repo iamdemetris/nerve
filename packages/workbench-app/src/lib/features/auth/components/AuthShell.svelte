@@ -10,6 +10,7 @@ import { authState } from "$lib/features/auth/state/auth-state.svelte";
 import { loadAuthPanel } from "$lib/features/auth/state/auth.svelte";
 import { settingsState } from "$lib/features/settings/state/settings-state.svelte";
 import ApiKeysSection from "./ApiKeysSection.svelte";
+import AuthPageActions from "./AuthPageActions.svelte";
 import CustomProvidersSection from "./CustomProvidersSection.svelte";
 import ModelsSection from "./ModelsSection.svelte";
 import SubscriptionsSection from "./SubscriptionsSection.svelte";
@@ -52,6 +53,9 @@ if (!authState.catalogLoaded) void loadAuthPanel();
   title="Authentication"
   ariaLabel="Authentication pages"
 >
+  {#snippet pageActions()}
+    <AuthPageActions />
+  {/snippet}
   {#snippet children(page)}
     {#if page.id === "connections"}
       <SubscriptionsSection {authProviders} />

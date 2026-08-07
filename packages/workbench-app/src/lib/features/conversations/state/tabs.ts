@@ -20,6 +20,7 @@ import {
   applyActiveConversationSelection,
   refreshConversationView,
 } from "./selection";
+import { createConversationOpener } from "./conversation-open-coordinator";
 import {
   addConversationTab,
   clearActiveSelection,
@@ -27,26 +28,36 @@ import {
   persistConversationTabs,
 } from "./state";
 
-export async function openConversation(conversationId: string) {
-  const conversation =
+const openConversationCoordinated = createConversationOpener({
+  findConversation: (conversationId) =>
     workspaceState.conversations.find(
       (candidate) => candidate.id === conversationId,
-    ) ??
+    ),
+  fetchConversation: async (conversationId) =>
     (await protocolRequest("conversation.get", { conversationId })).result
-      .conversation;
-  if (conversation.projectId !== workspaceState.selectedProjectId) {
+      .conversation,
+  selectedProjectId: () => workspaceState.selectedProjectId,
+  selectProject: async (projectId, options) => {
     const { selectProject } =
       await import("$lib/features/workspace/state/workspace-actions.svelte");
-    await selectProject(conversation.projectId);
-  }
-  addConversationTab(conversation.id);
-  conversationState.activeConversationTabId = conversation.id;
-  setActiveCenterTab({ kind: "conversation", id: conversation.id });
-  persistConversationTabs();
-  await applyActiveConversationSelection(conversation);
-  await refreshConversationView(conversation.id);
-  const view = ensureConversationView(conversation.id);
-  workspaceState.error = view.error;
+    await selectProject(projectId, options);
+  },
+  activate: async (conversation) => {
+    addConversationTab(conversation.id);
+    conversationState.activeConversationTabId = conversation.id;
+    setActiveCenterTab({ kind: "conversation", id: conversation.id });
+    persistConversationTabs();
+    await applyActiveConversationSelection(conversation);
+  },
+  hydrate: async (conversation) => {
+    await refreshConversationView(conversation.id);
+    const view = ensureConversationView(conversation.id);
+    workspaceState.error = view.error;
+  },
+});
+
+export function openConversation(conversationId: string): Promise<void> {
+  return openConversationCoordinated(conversationId);
 }
 
 export async function restoreConversationTabs(

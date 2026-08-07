@@ -24,6 +24,10 @@ export async function getModels(): Promise<ModelInfo[]> {
   return (await protocolRequest("model.list", {})).result.models;
 }
 
+export async function refreshModels(): Promise<ModelInfo[]> {
+  return (await protocolRequest("model.refresh", {})).result.models;
+}
+
 export async function getSlashCompletions(): Promise<CompletionItem[]> {
   return (await protocolRequest("completion.slash.list", {})).result.items;
 }

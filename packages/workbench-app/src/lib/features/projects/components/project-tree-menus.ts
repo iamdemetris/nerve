@@ -1,5 +1,7 @@
 import ArrowRight from "@lucide/svelte/icons/arrow-right";
 import Copy from "@lucide/svelte/icons/copy";
+import FolderInput from "@lucide/svelte/icons/folder-input";
+import Pencil from "@lucide/svelte/icons/pencil";
 import Plus from "@lucide/svelte/icons/plus";
 import Trash2 from "@lucide/svelte/icons/trash-2";
 import type { ContextMenuItem } from "@nervekit/ui-kit/components/ui/context-menu-list";
@@ -25,6 +27,8 @@ export type ProjectTreeMenuContext = {
   onNewConversationInProject?: (projectDir: string) => void;
   onOpenProjectInEditor?: (projectId: string, editor: ProjectEditor) => void;
   requestPrune: (project: ProjectRecord) => void;
+  requestRenameConversation: (conversation: ConversationRecord) => void;
+  requestMoveConversation: (conversation: ConversationRecord) => void;
   requestDelete: (target: DeleteTarget) => void;
 };
 
@@ -156,6 +160,17 @@ export function buildConversationMenu(
       icon: Plus,
       shortcut: ctx.newConversationShortcut,
       onSelect: () => ctx.onNewConversationInProject?.(project.dir),
+    },
+    { type: "separator" },
+    {
+      label: "Rename conversation",
+      icon: Pencil,
+      onSelect: () => ctx.requestRenameConversation(conversation),
+    },
+    {
+      label: "Move to project…",
+      icon: FolderInput,
+      onSelect: () => ctx.requestMoveConversation(conversation),
     },
     { type: "separator" },
     {

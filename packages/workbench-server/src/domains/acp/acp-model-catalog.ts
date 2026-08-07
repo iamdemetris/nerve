@@ -124,46 +124,50 @@ export class AcpModelCatalog {
    * Re-probes every agent. Safe to call at any time and collapses concurrent
    * callers, since each probe launches a subprocess.
    */
-  async refresh(cwd: string): Promise<void> {
-    this.#refreshing ??= this.#refreshAll(cwd).finally(() => {
-      this.#refreshing = undefined;
-    });
+  async refresh(cwd: string, options: { force?: boolean } = {}): Promise<void> {
+    this.#refreshing ??= this.#refreshAll(cwd, options.force ?? false).finally(
+      () => {
+        this.#refreshing = undefined;
+      },
+    );
     await this.#refreshing;
   }
 
-  async #refreshAll(cwd: string): Promise<void> {
-    for (const agentId of Object.keys(ACP_AGENTS) as AcpAgentId[]) {
-      const definition = ACP_AGENTS[agentId];
-      try {
-        const cached = this.#cache.get(agentId);
-        if (cached && isFresh(cached.refreshedAt)) continue;
+  async #refreshAll(cwd: string, force: boolean): Promise<void> {
+    await Promise.all(
+      (Object.keys(ACP_AGENTS) as AcpAgentId[]).map(async (agentId) => {
+        const definition = ACP_AGENTS[agentId];
+        try {
+          const cached = this.#cache.get(agentId);
+          if (!force && cached && isFresh(cached.refreshedAt)) return;
 
-        const probe = await probeAcpAgent({ agentId, cwd });
-        this.#availability.set(agentId, {
-          agentId,
-          label: definition.label,
-          status: probe.status,
-          detail: probe.detail,
-          modelCount: probe.capabilities?.models.length ?? 0,
-          refreshedAt: new Date().toISOString(),
-        });
+          const probe = await probeAcpAgent({ agentId, cwd });
+          this.#availability.set(agentId, {
+            agentId,
+            label: definition.label,
+            status: probe.status,
+            detail: probe.detail,
+            modelCount: probe.capabilities?.models.length ?? 0,
+            refreshedAt: new Date().toISOString(),
+          });
 
-        if (probe.status !== "ready" || !probe.capabilities) {
-          // Keep any previously discovered models: a CLI that is temporarily
-          // logged out should not empty the picker.
-          continue;
+          if (probe.status !== "ready" || !probe.capabilities) {
+            // Keep any previously discovered models: a CLI that is temporarily
+            // logged out should not empty the picker.
+            return;
+          }
+          this.#cache.set(agentId, {
+            agentId,
+            refreshedAt: new Date().toISOString(),
+            models: probe.capabilities.models.map((model) =>
+              toModelInfo(agentId, model.value, model.label),
+            ),
+          });
+        } catch (error) {
+          this.#log(`ACP model discovery failed for ${agentId}`, error);
         }
-        this.#cache.set(agentId, {
-          agentId,
-          refreshedAt: new Date().toISOString(),
-          models: probe.capabilities.models.map((model) =>
-            toModelInfo(agentId, model.value, model.label),
-          ),
-        });
-      } catch (error) {
-        this.#log(`ACP model discovery failed for ${agentId}`, error);
-      }
-    }
+      }),
+    );
     await this.#persist();
   }
 
@@ -192,11 +196,12 @@ function toModelInfo(
   modelId: string,
   label: string,
 ): ModelInfo {
+  const displayName = acpModelDisplayName(agentId, modelId, label);
   return {
     provider: acpProviderId(agentId),
     modelId,
-    name: label,
-    label,
+    name: displayName,
+    label: displayName,
     // The agent runs its own loop and never reports these, so they stay unset
     // rather than being guessed; the UI already renders "unknown" for zero.
     reasoning: false,
@@ -206,4 +211,15 @@ function toModelInfo(
     contextWindow: 0,
     maxOutputTokens: 0,
   };
+}
+
+export function acpModelDisplayName(
+  agentId: AcpAgentId,
+  modelId: string,
+  label: string,
+): string {
+  if (agentId === "cursor" && modelId.startsWith("composer-2.5")) {
+    return modelId.includes("fast=true") ? "Composer 2.5 Fast" : "Composer 2.5";
+  }
+  return label;
 }

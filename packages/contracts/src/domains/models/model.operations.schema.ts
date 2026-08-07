@@ -14,4 +14,13 @@ export const modelsOperationDefinitions = [
     ["workbench_server"] as const,
     "operation.model.list",
   ),
+  defineOperation(
+    "model.refresh",
+    emptyParamsSchema,
+    z.object({ models: z.array(modelInfoSchema) }),
+    "mutation",
+    "recommended",
+    ["workbench_server"] as const,
+    "operation.model.refresh",
+  ),
 ] as const;

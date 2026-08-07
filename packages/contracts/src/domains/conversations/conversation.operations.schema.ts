@@ -7,6 +7,7 @@ import {
   createConversationRequestSchema,
   importConversationRequestSchema,
   navigateConversationRequestSchema,
+  updateConversationRequestSchema,
 } from "./index.js";
 import { z } from "zod";
 import { defineOperation } from "../protocol/operation-definition.schema.js";
@@ -22,6 +23,9 @@ const conversationNavigateParamsSchema = conversationIdParamsSchema.merge(
 );
 const conversationCompactParamsSchema = conversationIdParamsSchema.merge(
   compactConversationRequestSchema,
+);
+const conversationUpdateParamsSchema = conversationIdParamsSchema.merge(
+  updateConversationRequestSchema,
 );
 
 export const conversationsOperationDefinitions = [
@@ -60,6 +64,15 @@ export const conversationsOperationDefinitions = [
     "none",
     ["workbench_server"] as const,
     "operation.conversation.get",
+  ),
+  defineOperation(
+    "conversation.update",
+    conversationUpdateParamsSchema,
+    z.object({ conversation: conversationRecordSchema }),
+    "mutation",
+    "recommended",
+    ["workbench_server"] as const,
+    "operation.conversation.update",
   ),
   defineOperation(
     "conversation.delete",

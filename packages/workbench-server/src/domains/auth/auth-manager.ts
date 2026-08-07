@@ -196,8 +196,18 @@ export class AuthManager {
     return apiKey ? { apiKey } : undefined;
   }
 
-  async refreshModels(options: { allowNetwork?: boolean } = {}): Promise<void> {
-    await this.models.refresh({ allowNetwork: options.allowNetwork ?? true });
+  async refreshModels(
+    options: {
+      allowNetwork?: boolean;
+      force?: boolean;
+      providers?: readonly string[];
+    } = {},
+  ): Promise<void> {
+    await this.models.refresh({
+      allowNetwork: options.allowNetwork ?? true,
+      force: options.force,
+      providers: options.providers,
+    });
   }
 
   async listProviderMetadata(

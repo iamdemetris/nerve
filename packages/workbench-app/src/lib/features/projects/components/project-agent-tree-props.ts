@@ -40,6 +40,14 @@ export type ProjectAgentTreeProps = {
   onOpenProjectInEditor?: (projectId: string, editor: ProjectEditor) => void;
   onDeleteProject?: (projectId: string) => void;
   onDeleteConversation?: (conversationId: string) => void;
+  onRenameConversation?: (
+    conversationId: string,
+    title: string,
+  ) => void | Promise<void>;
+  onMoveConversation?: (
+    conversationId: string,
+    projectId: string,
+  ) => void | Promise<void>;
   onPruneProjectConversations?: (
     projectId: string,
     request: PruneProjectConversationsRequest,

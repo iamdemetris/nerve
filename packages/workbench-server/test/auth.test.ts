@@ -110,6 +110,21 @@ describe("AuthManager", () => {
     assert.equal(custom.supportsApiKey, true);
   });
 
+  it("makes OpenCode Zen Kimi K3 usable after its API key is configured", async () => {
+    const auth = new AuthManager(
+      new EncryptedFileSecretProvider(await tempHome()),
+    );
+    await auth.setApiKey("opencode", "zen-key");
+
+    const provider = (await auth.listProviderMetadata()).find(
+      (candidate) => candidate.provider === "opencode",
+    );
+
+    assert.equal(provider?.configured, true);
+    assert.equal(provider?.displayName, "OpenCode Zen");
+    assert.equal(auth.models.getModel("opencode", "kimi-k3")?.name, "Kimi K3");
+  });
+
   it("includes Atlassian provider metadata", async () => {
     const auth = new AuthManager(
       new EncryptedFileSecretProvider(await tempHome()),

@@ -74,9 +74,10 @@ export const platformMethodHandlers = defineWorkbenchMethodHandlers({
     return state.providerCatalog.catalog;
   },
   "providerCatalog.custom.upsert": async (state, params) => {
-    const catalog = await state.providerCatalog.upsertProvider(params as never);
+    await state.providerCatalog.upsertProvider(params as never);
+    await state.registry.refreshModels({ provider: params.id });
     await publishProviderCatalogChanged(state, params.id);
-    return catalog;
+    return state.providerCatalog.catalog;
   },
   "providerCatalog.custom.delete": async (state, params) => {
     const catalog = await state.providerCatalog.deleteProvider(params.id);
@@ -119,6 +120,11 @@ export const platformMethodHandlers = defineWorkbenchMethodHandlers({
     operation: await state.storageCleanup.cancel(params.operationId),
   }),
   "model.list": (state) => ({ models: state.registry.listModels() }),
+  "model.refresh": async (state) => {
+    const models = await state.registry.refreshModels();
+    await publishProviderCatalogChanged(state);
+    return { models };
+  },
   "usage.subscription.get": async (state) => ({
     usage: await state.registry.getSubscriptionUsage(),
   }),

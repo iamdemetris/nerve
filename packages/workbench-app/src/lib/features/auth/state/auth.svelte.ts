@@ -1,4 +1,6 @@
-import { getProviderCatalog } from "$lib/api";
+import { getProviderCatalog, refreshModels } from "$lib/api";
+import { notify } from "$lib/features/notifications/notify.svelte";
+import { settingsState } from "$lib/features/settings/state/settings-state.svelte";
 import { loadSettingsPanel } from "$lib/features/settings/state/settings-actions.svelte";
 import {
   addCenterTab,
@@ -49,4 +51,20 @@ export async function refreshProviderCatalog() {
   authState.modelDefinitions = catalog.models;
   authState.catalogLoaded = true;
   await loadSettingsPanel();
+}
+
+export async function refreshAvailableModels(): Promise<void> {
+  if (authState.modelsRefreshing) return;
+  authState.modelsRefreshing = true;
+  try {
+    settingsState.models = await refreshModels();
+    await loadAuthPanel();
+    notify.success("Models refreshed");
+  } catch (caught) {
+    notify.error("Could not refresh models", {
+      description: caught instanceof Error ? caught.message : String(caught),
+    });
+  } finally {
+    authState.modelsRefreshing = false;
+  }
 }

@@ -182,7 +182,7 @@ $effect(() => {
   {open}
   onOpenChange={handleOpenChange}
   size="lg"
-  triggerClass="composer-tab model-tab"
+  triggerClass="composer-tab model-tab w-[clamp(7rem,22vw,16rem)] max-sm:w-[clamp(5.75rem,34vw,9rem)]"
   ariaLabel="Model and thinking level"
   {triggerTitle}
   side="top"
@@ -214,7 +214,7 @@ $effect(() => {
             />
             {#if providerChips.length > 2}
               <div
-                class="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-1.5 overscroll-x-contain"
+                class="w-full min-w-0 overflow-x-auto overflow-y-hidden px-0.5 pb-2 overscroll-x-contain"
               >
                 <ToggleGroup.Root
                   type="single"
@@ -335,7 +335,8 @@ $effect(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  max-width: clamp(7rem, 22vw, 16rem);
+  width: 100%;
+  min-width: 0;
   color: inherit;
 }
 
@@ -361,7 +362,6 @@ $effect(() => {
 
 @media (max-width: 639px) {
   .model-tab-inner {
-    max-width: clamp(5.75rem, 34vw, 9rem);
     gap: 0.22rem;
   }
 

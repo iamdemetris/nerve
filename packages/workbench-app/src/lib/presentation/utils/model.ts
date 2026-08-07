@@ -25,12 +25,13 @@ const providerDisplayNames: Record<string, string> = {
   "google-vertex": "Google Vertex",
   openai: "OpenAI",
   "openai-codex": "OpenAI Codex",
+  opencode: "OpenCode Zen",
   openrouter: "OpenRouter",
   xai: "xAI",
   // Agent CLIs the user authenticates themselves; the `-cli` suffix keeps them
   // distinct from same-named hosted APIs and is noise in the picker.
   "cursor-cli": "Cursor",
-  "opencode-cli": "OpenCode",
+  "opencode-cli": "OpenCode CLI",
 };
 
 function titleCaseProviderToken(token: string): string {

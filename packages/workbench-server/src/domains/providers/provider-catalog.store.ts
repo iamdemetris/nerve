@@ -11,6 +11,7 @@ import {
   pathExists,
   readJsonFile,
 } from "../../infrastructure/storage/json.js";
+import type { DiscoveredProviderModel } from "./custom-provider-model-discovery.js";
 
 /**
  * File-first store for user-defined providers and models, persisted to
@@ -82,6 +83,36 @@ export class ProviderCatalogStore {
     );
     models.push(model);
     return this.write({ ...this.#catalog, models });
+  }
+
+  async mergeDiscoveredModels(
+    provider: string,
+    discovered: DiscoveredProviderModel[],
+  ): Promise<ProviderCatalog> {
+    await this.ensureLoaded();
+    const existing = new Set(
+      this.#catalog.models
+        .filter((model) => model.provider === provider)
+        .map((model) => model.modelId),
+    );
+    const additions: ModelDefinition[] = discovered
+      .filter((model) => !existing.has(model.id))
+      .map((model) => ({
+        provider,
+        modelId: model.id,
+        name: model.name,
+        reasoning: false,
+        supportedThinkingLevels: ["off"],
+        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 0,
+        maxTokens: 0,
+      }));
+    if (additions.length === 0) return this.#catalog;
+    return this.write({
+      ...this.#catalog,
+      models: [...this.#catalog.models, ...additions],
+    });
   }
 
   async deleteModel(

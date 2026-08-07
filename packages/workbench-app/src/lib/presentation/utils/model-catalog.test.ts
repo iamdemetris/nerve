@@ -80,4 +80,17 @@ describe("model catalog", () => {
       ["vendor/model-499"],
     );
   });
+
+  it("distinguishes OpenCode Zen from the OpenCode CLI", () => {
+    const entries = buildModelCatalog([
+      model("opencode", "kimi-k3", "Kimi K3"),
+      model("opencode-cli", "opencode/big-pickle", "Big Pickle"),
+    ]);
+
+    assert.deepEqual(modelProviderFacets(entries), [
+      { id: "all", label: "All", count: 2 },
+      { id: "opencode-cli", label: "OpenCode CLI", count: 1 },
+      { id: "opencode", label: "OpenCode Zen", count: 1 },
+    ]);
+  });
 });

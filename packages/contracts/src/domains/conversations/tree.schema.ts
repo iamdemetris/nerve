@@ -36,6 +36,19 @@ export type CreateConversationRequest = z.infer<
   typeof createConversationRequestSchema
 >;
 
+export const updateConversationRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    projectId: z.string().startsWith("proj_").optional(),
+  })
+  .refine(
+    (request) => request.title !== undefined || request.projectId !== undefined,
+    "Provide a title or projectId.",
+  );
+export type UpdateConversationRequest = z.infer<
+  typeof updateConversationRequestSchema
+>;
+
 export const importConversationRequestSchema = z.object({
   project: z
     .object({

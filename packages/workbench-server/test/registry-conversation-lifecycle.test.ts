@@ -6,6 +6,7 @@ import type {
   ConversationEntry,
   ConversationRecord,
 } from "@nervekit/contracts";
+import { ApplicationError } from "../src/core/application-error.js";
 import { createOrchestratorState } from "../src/app/orchestrator-state.js";
 import { initializeStorage } from "../src/infrastructure/storage/index.js";
 import {
@@ -153,6 +154,97 @@ describe("RuntimeRegistry conversation lifecycle", () => {
       assert.equal(
         state.registry.getAgent(agent.id).conversationId,
         conversation.id,
+      );
+    } finally {
+      state.index.close();
+    }
+  });
+
+  it("renames and moves a conversation without losing its history", async () => {
+    const state = await createState("nerve-registry-conversation-move-");
+    try {
+      const sourceDir = join(state.storage.paths.home, "source");
+      const targetDir = join(state.storage.paths.home, "target");
+      await Promise.all([
+        mkdir(sourceDir, { recursive: true }),
+        mkdir(targetDir, { recursive: true }),
+      ]);
+      const source = await state.registry.createProject({ dir: sourceDir });
+      const target = await state.registry.createProject({ dir: targetDir });
+      const conversation = await state.registry.createConversation({
+        projectId: source.id,
+        title: "Old title",
+      });
+      const agent = await state.registry.createAgent({
+        projectId: source.id,
+        conversationId: conversation.id,
+      });
+      const entry = await appendRegistryEntry(state, {
+        conversationId: conversation.id,
+        role: "user",
+        text: "Keep this history",
+      });
+
+      const updated = await state.registry.updateConversationDetails(
+        conversation.id,
+        { title: "New title", projectId: target.id },
+      );
+
+      assert.equal(updated.title, "New title");
+      assert.equal(updated.projectId, target.id);
+      assert.equal(
+        state.registry.getConversationEntries(conversation.id)[0]?.id,
+        entry.id,
+      );
+      const movedAgent = state.registry.getAgent(agent.id);
+      assert.equal(movedAgent.projectId, target.id);
+      assert.equal(movedAgent.projectDir, target.dir);
+      assert.deepEqual(movedAgent.workspaceScope.roots, [target.dir]);
+      const events = await state.events.readStream("workspace", 1, 5_000);
+      const changed = events.events.find(
+        (event) =>
+          event.type === "conversation.updated" &&
+          (event.data as { conversation?: ConversationRecord }).conversation
+            ?.id === conversation.id,
+      );
+      assert.ok(changed);
+    } finally {
+      state.index.close();
+    }
+  });
+
+  it("rejects moving an active conversation", async () => {
+    const state = await createState("nerve-registry-active-move-");
+    try {
+      const sourceDir = join(state.storage.paths.home, "source");
+      const targetDir = join(state.storage.paths.home, "target");
+      await Promise.all([
+        mkdir(sourceDir, { recursive: true }),
+        mkdir(targetDir, { recursive: true }),
+      ]);
+      const source = await state.registry.createProject({ dir: sourceDir });
+      const target = await state.registry.createProject({ dir: targetDir });
+      const conversation = await state.registry.createConversation({
+        projectId: source.id,
+      });
+      const agent = await state.registry.createAgent({
+        projectId: source.id,
+        conversationId: conversation.id,
+      });
+      state.registry.agents.set(agent.id, { ...agent, status: "running" });
+
+      await assert.rejects(
+        state.registry.updateConversationDetails(conversation.id, {
+          projectId: target.id,
+        }),
+        (error) =>
+          error instanceof ApplicationError &&
+          error.status === 409 &&
+          error.code === "CONVERSATION_BUSY",
+      );
+      assert.equal(
+        state.registry.getConversation(conversation.id).projectId,
+        source.id,
       );
     } finally {
       state.index.close();
